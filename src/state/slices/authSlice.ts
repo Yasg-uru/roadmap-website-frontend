@@ -5,7 +5,6 @@ import axios from "axios";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "@/helper/axiosInstance";
 
-// Register User with optional profile file upload
 export const registerUser = createAsyncThunk<
   any,
   { username: string; email: string; password: string; profileFile?: File },
@@ -52,13 +51,13 @@ export const loginUser = createAsyncThunk<
   { rejectValue: string }
 >("auth/loginUser", async (loginData, { rejectWithValue }) => {
   try {
-    const { data } = await axios.post(`/user/login`, loginData, {
+    const { data } = await axiosInstance.post(`/user/sign-in`, loginData, {
       headers: { "Content-Type": "application/json" },
       withCredentials: true, // important for cookies
     });
     return data;
   } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || error.message);
+    return rejectWithValue(error.response?.data?.error || error.message);
   }
 });
 

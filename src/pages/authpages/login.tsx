@@ -20,10 +20,9 @@ import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch";
 import { toast } from "sonner";
 import { loginUser } from "@/state/slices/authSlice";
 
-
 const Login: React.FC = () => {
   const dispatch = useAppDispatch();
- 
+
   const navigate = useNavigate();
   const { isLoading } = useAppSelector((state) => state.auth);
 
@@ -40,18 +39,15 @@ const Login: React.FC = () => {
       .unwrap()
       .then(() => {
         toast.success("Successfully Logged In", {
-  description: "Logged in successfully. Explore courses and register.",
-});
+          description: "Logged in successfully. Explore courses and register.",
+        });
 
-
-
-       
         navigate("/");
       })
-      .catch((error:any) => {
-      toast.error("Login Error", {
-  description: error,
-});
+      .catch((error: any) => {
+        toast.error("Login Error", {
+          description: error,
+        });
       });
   };
 
@@ -125,10 +121,7 @@ const Login: React.FC = () => {
           <div>
             <span className="text-sm text-[#E2E8F0]">
               Don't have an account?{" "}
-              <Link
-                to="/sign-up"
-                className="text-[#60A5FA] hover:underline"
-              >
+              <Link to="/sign-up" className="text-[#60A5FA] hover:underline">
                 Register here
               </Link>
             </span>

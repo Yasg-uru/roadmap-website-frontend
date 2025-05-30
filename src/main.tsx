@@ -5,10 +5,12 @@ import App from "./App.tsx";
 import { Provider } from "react-redux";
 import { store } from "./state/store.tsx";
 import { BrowserRouter } from "react-router-dom";
+import { Toaster } from "sonner";
 
 createRoot(document.getElementById("root")!).render(
   <Provider store={store}>
   <BrowserRouter>
+  <Toaster/>
     <App />
   </BrowserRouter>
   </Provider>

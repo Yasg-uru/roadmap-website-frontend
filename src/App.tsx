@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button"
+import { Route, Routes } from "react-router-dom"
+import Signup from "./pages/authpages/register-user"
 
 function App() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-svh">
-      <Button className="bg-red-500">Click me</Button>
-    </div>
+   <Routes>
+    <Route path="/signup" element={<Signup/>}/>
+   </Routes>
   )
 }
 

@@ -24,7 +24,7 @@ export const registerUser = createAsyncThunk<
     });
     return data;
   } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || error.message);
+    return rejectWithValue(error.response?.data?.error || error.message);
   }
 });
 
@@ -35,12 +35,12 @@ export const verifyUser = createAsyncThunk<
   { rejectValue: string }
 >("auth/verifyUser", async (verifyData, { rejectWithValue }) => {
   try {
-    const { data } = await axios.post(`/user/verify-code`, verifyData, {
+    const { data } = await axiosInstance.post(`/user/verify-code`, verifyData, {
       headers: { "Content-Type": "application/json" },
     });
     return data;
   } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || error.message);
+    return rejectWithValue(error.response?.data?.error || error.message);
   }
 });
 

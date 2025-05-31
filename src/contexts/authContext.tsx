@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import axios from "axios";
+
 import type { IUser } from "@/types/user/user.types";
 import axiosInstance from "@/helper/axiosInstance";
 import { toast } from "sonner";

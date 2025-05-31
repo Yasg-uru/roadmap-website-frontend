@@ -1,3 +1,4 @@
+import type { RoadmapDetailsResponse } from "./roadmap-details";
 import type { IRoadmap } from "./roadmap.types";
 export interface IPaginationMeta {
   page: number;
@@ -7,7 +8,7 @@ export interface IPaginationMeta {
 export interface roadmapState{
     isLoading : boolean;
     roadmaps:IRoadmap[];
-    roadmap:IRoadmap | null;
+    roadmap:RoadmapDetailsResponse | null;
     paginationMeta : IPaginationMeta | null;
 
 }

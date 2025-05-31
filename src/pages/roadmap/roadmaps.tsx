@@ -30,6 +30,7 @@ import {
   Coins,
   MoreHorizontal,
 } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 // Define the IRoadmap interface
 export interface IRoadmap {
@@ -168,6 +169,7 @@ const RoadLoadingAnimation = () => (
 )
 
 const Roadmaps: React.FunctionComponent = () => {
+  const navigate = useNavigate();
   const dispatch = useAppDispatch()
   const [page, setPage] = useState<number>(1)
   const [searchTerm, setSearchTerm] = useState<string>("")
@@ -344,6 +346,7 @@ const Roadmaps: React.FunctionComponent = () => {
               {filteredAndSortedRoadmaps.map((roadmap: IRoadmap) => (
                 <Card
                   key={roadmap._id}
+                  onClick={()=>navigate(`/details/${roadmap._id}`)}
                   className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm hover:bg-slate-700/50 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/10 group cursor-pointer"
                 >
                   <CardHeader className="space-y-3">

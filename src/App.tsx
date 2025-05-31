@@ -6,6 +6,7 @@ import Login from "./pages/authpages/login"
 import ForgotPassword from "./pages/authpages/forgot-password"
 import ResetPassword from "./pages/authpages/reset-password"
 import Navbar from "./pages/main-pages/navbar"
+import Roadmaps from "./pages/roadmap/roadmaps"
 
 function App() {
   return (
@@ -17,6 +18,8 @@ function App() {
     <Route path="/login" element={<Login/>}/>
     <Route path="/forgot-password" element={<ForgotPassword/>}/>
     <Route path="/reset-password/:token" element={<ResetPassword/>}/>
+
+    <Route path="/roadmaps" element={<Roadmaps/>}/>
    </Routes>
    </>
   )

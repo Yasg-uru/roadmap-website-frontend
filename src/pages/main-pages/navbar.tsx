@@ -49,7 +49,7 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-[#0F172A] shadow-lg py-2' : 'bg-gradient-to-b from-[#0F172A] to-[#020617] py-4'}`}>
+    <nav className={` w-full z-50 transition-all duration-300 ${scrolled ? 'bg-[#0F172A] shadow-lg py-2' : 'bg-gradient-to-b from-[#0F172A] to-[#020617] py-4'}`}>
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           {/* Logo */}

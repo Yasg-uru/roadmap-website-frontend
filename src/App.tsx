@@ -8,12 +8,15 @@ import ResetPassword from "./pages/authpages/reset-password"
 import Navbar from "./pages/main-pages/navbar"
 import Roadmaps from "./pages/roadmap/roadmaps"
 import RoadmapDetails from "./pages/roadmap/getroadmapdetails-page"
+import { RoadmapGenerator } from "./pages/main-pages/roadmap-generator"
+import Home from "./pages/main-pages/home-page"
 
 function App() {
   return (
     <>
     <Navbar/>
    <Routes>
+    <Route path="/" element={<Home/>} />
     <Route path="/signup" element={<Signup/>}/>
     <Route path = "/verify/:email"  element={<Verify/>}/>
     <Route path="/login" element={<Login/>}/>

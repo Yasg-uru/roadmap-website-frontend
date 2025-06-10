@@ -10,6 +10,7 @@ import Roadmaps from "./pages/roadmap/roadmaps"
 import RoadmapDetails from "./pages/roadmap/getroadmapdetails-page"
 import { RoadmapGenerator } from "./pages/main-pages/roadmap-generator"
 import Home from "./pages/main-pages/home-page"
+import Roadmap from "./pages/main-pages/roadmap.example"
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
     <Navbar/>
    <Routes>
     <Route path="/" element={<Home/>} />
+    <Route path="/roadmap" element={<Roadmap/>}/>
     <Route path="/signup" element={<Signup/>}/>
     <Route path = "/verify/:email"  element={<Verify/>}/>
     <Route path="/login" element={<Login/>}/>

@@ -1,19 +1,32 @@
-"use client"
+import React, { useEffect, useCallback, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import ReactFlow, {
+  Background,
+  Controls,
+  
+  Panel,
+  useNodesState,
+  useEdgesState,
+  MarkerType,
+  addEdge,
+  ReactFlowProvider,
+  useReactFlow,
+} from 'reactflow';
+import type { Connection, Node , Edge } from 'reactflow';
+import 'reactflow/dist/style.css';
+import { motion } from 'framer-motion';
 
-import type React from "react"
-import { useEffect, useState, useRef } from "react"
-import { motion } from "framer-motion"
-import { useParams } from "react-router-dom"
-import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch"
-import { getRoadMapDetails } from "@/state/slices/roadmapSlice"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { getRoadMapDetails } from '@/state/slices/roadmapSlice';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Clock,
   Star,
@@ -22,7 +35,7 @@ import {
   CheckCircle,
   PlayCircle,
   BookOpen,
-  LinkIcon,
+  Link as LinkIcon,
   Trophy,
   Target,
   ThumbsUp,
@@ -35,995 +48,949 @@ import {
   Lock,
   MapPin,
   Layers,
-} from "lucide-react"
+  ChevronRight,
+  ChevronDown,
+  GanttChart,
+  BarChart2,
+  List,
+  LayoutGrid,
+  HelpCircle,
+  Bookmark,
+  Flag,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { NodeDetails } from '@/types/user/roadmap/roadmap-details';
+import { useAppDispatch, useAppSelector } from '@/hooks/useAppDispatch';
+import RoadmapNode from "./roadmapNode"
+import { toast } from 'sonner';
+const nodeTypes = {
+  roadmapNode: RoadmapNode,
+};
 
-// Types
-interface ResourceResponse {
-  _id: string
-  title: string
-  description?: string
-  url: string
-  resourceType: string
-  contentType?: string
-  difficulty?: string
-  stats?: {
-    views?: number
-    clicks?: number
-    rating?: number
-  }
-  thumbnail?: {
-    url?: string
-  }
-}
+const RoadmapDetailsInner = () => {
+  const dispatch = useAppDispatch();
+  const { isLoading} = useAppSelector((state) => state.roadmap);
+  const Roadmap = useAppSelector(state=>state.roadmap.roadmap);
+  const roadmap = Roadmap?.roadmap;
+  const roadmapNodes = Roadmap?.roadmapNodes;
+  const { roadmapId } = useParams<{ roadmapId: string }>();
+  const reactFlowInstance = useReactFlow();
+  const [activeTab, setActiveTab] = useState('roadmap');
+  const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
+  const [selectedNode, setSelectedNode] = useState<NodeDetails | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-interface NodeDetails {
-  _id: string
-  title: string
-  description?: string
-  depth: number
-  position: number
-  nodeType?: string
-  isOptional?: boolean
-  estimatedDuration?: {
-    value: number
-    unit: string
-  }
-  resources?: ResourceResponse[]
-  dependencies?: Array<{ _id: string; title: string }>
-  prerequisites?: Array<{ _id: string; title: string }>
-  metadata?: {
-    difficulty?: string
-    importance?: string
-  }
-  children?: NodeDetails[]
-}
+  // Convert roadmap nodes to ReactFlow nodes and edges
+  const convertNodesToFlowElements = useCallback((nodes: NodeDetails[], parentId: string | null = null, xPos = 0, yPos = 0) => {
+    const flowNodes: Node[] = [];
+    const flowEdges: Edge[] = [];
+    let currentY = yPos;
 
-interface ReviewResponse {
-  _id: string
-  user: {
-    _id: string
-    username: string
-    avatar?: string
-  }
-  rating: number
-  title?: string
-  review: string
-  pros?: string[]
-  cons?: string[]
-  isVerified: boolean
-  createdAt: string
-}
+    nodes.forEach((node, index) => {
+      const nodeId = node._id;
+      const isExpanded = expandedNodes[nodeId] ?? false;
 
-interface RoadmapDetails {
-  _id: string
-  title: string
-  slug: string
-  description: string
-  longDescription?: string
-  category: string
-  difficulty?: string
-  estimatedDuration?: {
-    value: number
-    unit: string
-  }
-  coverImage?: {
-    url: string
-  }
-  isFeatured?: boolean
-  isCommunityContributed?: boolean
-  contributor?: {
-    _id: string
-    username: string
-    avatar?: string
-  }
-  tags?: string[]
-  prerequisites?: Array<{
-    _id: string
-    title: string
-    slug: string
-  }>
-  stats?: {
-    views: number
-    completions: number
-    averageRating: number
-    ratingsCount: number
-  }
-  reviews?: ReviewResponse[]
-  version?: number
-  isPublished?: boolean
-  publishedAt?: string
-  createdAt?: string
-}
-
-interface RoadmapDetailsResponse {
-  roadmap: RoadmapDetails
-  nodes: NodeDetails[]
-}
-
-interface GraphNode {
-  id: string
-  x: number
-  y: number
-  node: NodeDetails
-  connections: string[]
-}
-
-// Utility functions
-const getDifficultyColor = (difficulty?: string) => {
-  switch (difficulty?.toLowerCase()) {
-    case "beginner":
-      return "bg-green-500"
-    case "intermediate":
-      return "bg-yellow-500"
-    case "advanced":
-      return "bg-red-500"
-    default:
-      return "bg-gray-500"
-  }
-}
-
-const getResourceIcon = (type: string) => {
-  switch (type.toLowerCase()) {
-    case "video":
-      return <PlayCircle className="w-4 h-4" />
-    case "article":
-      return <BookOpen className="w-4 h-4" />
-    case "course":
-      return <Trophy className="w-4 h-4" />
-    default:
-      return <LinkIcon className="w-4 h-4" />
-  }
-}
-
-// Graph layout algorithm
-const calculateNodePositions = (nodes: NodeDetails[]): GraphNode[] => {
-  const graphNodes: GraphNode[] = []
-  const nodeMap = new Map<string, NodeDetails>()
-
-  // Create node map
-  nodes.forEach((node) => {
-    nodeMap.set(node._id, node)
-  })
-
-  // Sort nodes by depth and position
-  const sortedNodes = [...nodes].sort((a, b) => {
-    if (a.depth !== b.depth) return a.depth - b.depth
-    return a.position - b.position
-  })
-
-  // Calculate positions
-  const depthGroups = new Map<number, NodeDetails[]>()
-  sortedNodes.forEach((node) => {
-    if (!depthGroups.has(node.depth)) {
-      depthGroups.set(node.depth, [])
-    }
-    depthGroups.get(node.depth)!.push(node)
-  })
-
-  const canvasWidth = 1200
-  const canvasHeight = 800
-  const verticalSpacing = canvasHeight / (depthGroups.size + 1)
-
-  depthGroups.forEach((nodesAtDepth, depth) => {
-    const horizontalSpacing = canvasWidth / (nodesAtDepth.length + 1)
-
-    nodesAtDepth.forEach((node, index) => {
-      const x = horizontalSpacing * (index + 1)
-      const y = verticalSpacing * (depth + 1)
-
-      // Find connections based on dependencies
-      const connections: string[] = []
-      if (node.dependencies) {
-        node.dependencies.forEach((dep) => {
-          if (nodeMap.has(dep._id)) {
-            connections.push(dep._id)
+      // Create flow node
+      flowNodes.push({
+        id: nodeId,
+        type: 'roadmapNode',
+        position: { x: xPos, y: currentY },
+        data: {
+          ...node,
+          isExpanded,
+          onExpandToggle: () => {
+            setExpandedNodes(prev => ({
+              ...prev,
+              [nodeId]: !prev[nodeId]
+            }));
+          },
+          onNodeClick: () => {
+            setSelectedNode(node);
+            setDialogOpen(true);
           }
-        })
+        },
+      });
+
+      // Create edge from parent if exists
+      if (parentId) {
+        flowEdges.push({
+          id: `e${parentId}-${nodeId}`,
+          source: parentId,
+          target: nodeId,
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+          },
+          style: {
+            strokeWidth: 2,
+          },
+        });
       }
 
-      // Also connect to children
-      if (node.children) {
-        node.children.forEach((child) => {
-          connections.push(child._id)
-        })
+      // Add dependencies as edges
+      if (node.dependencies && node.dependencies.length > 0) {
+        node.dependencies.forEach(dep => {
+          flowEdges.push({
+            id: `e${dep._id}-${nodeId}`,
+            source: dep._id,
+            target: nodeId,
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+            },
+            style: {
+              stroke: '#94a3b8',
+              strokeDasharray: '5,5',
+              strokeWidth: 2,
+            },
+            animated: true,
+          });
+        });
       }
 
-      graphNodes.push({
-        id: node._id,
-        x,
-        y,
-        node,
-        connections,
-      })
-    })
-  })
+      // Add prerequisites as edges
+      if (node.prerequisites && node.prerequisites.length > 0) {
+        node.prerequisites.forEach(prereq => {
+          flowEdges.push({
+            id: `e${prereq._id}-${nodeId}`,
+            source: prereq._id,
+            target: nodeId,
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+            },
+            style: {
+              stroke: '#cbd5e1',
+              strokeWidth: 2,
+            },
+          });
+        });
+      }
 
-  return graphNodes
-}
+      // Add children recursively if expanded
+      if (isExpanded && node.children && node.children.length > 0) {
+        const childLevel = convertNodesToFlowElements(node.children, nodeId, xPos + 250, currentY);
+        flowNodes.push(...childLevel.nodes);
+        flowEdges.push(...childLevel.edges);
+        currentY += Math.max(150, childLevel.height);
+      } else {
+        currentY += 120;
+      }
+    });
 
-// Connection Line Component
-const ConnectionLine: React.FC<{
-  from: GraphNode
-  to: GraphNode
-  isActive: boolean
-  transform: string
-}> = ({ from, to, isActive, transform }) => {
-  const pathData = `M ${from.x} ${from.y} Q ${(from.x + to.x) / 2} ${from.y - 50} ${to.x} ${to.y}`
+    return { nodes: flowNodes, edges: flowEdges, height: currentY - yPos };
+  }, [expandedNodes]);
 
-  return (
-    <g transform={transform}>
-      <motion.path
-        d={pathData}
-        stroke={isActive ? "#3b82f6" : "#64748b"}
-        strokeWidth={isActive ? 3 : 2}
-        fill="none"
-        strokeDasharray={isActive ? "0" : "5,5"}
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 1, delay: 0.5 }}
-        className="transition-all duration-300"
-      />
-      <motion.circle
-        r="4"
-        fill={isActive ? "#3b82f6" : "#64748b"}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 1 }}
-      >
-        <animateMotion dur="3s" repeatCount="indefinite">
-          <mpath href={`#path-${from.id}-${to.id}`} />
-        </animateMotion>
-      </motion.circle>
-    </g>
-  )
-}
-
-// Graph Node Component
-const GraphNodeComponent: React.FC<{
-  graphNode: GraphNode
-  isCompleted: boolean
-  isSelected: boolean
-  isLocked: boolean
-  onSelect: () => void
-  onComplete: () => void
-  transform: string
-  scale: number
-}> = ({ graphNode, isCompleted, isSelected, isLocked, onSelect, onComplete, transform, scale }) => {
-  const { node } = graphNode
-
-  return (
-    <g transform={`${transform} translate(${graphNode.x}, ${graphNode.y})`}>
-      {/* Node glow effect */}
-      {isSelected && (
-        <motion.circle
-          r="45"
-          fill="none"
-          stroke="#3b82f6"
-          strokeWidth="2"
-          opacity="0.3"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 0.3 }}
-        />
-      )}
-
-      {/* Main node circle */}
-      <motion.circle
-        r="35"
-        fill={isCompleted ? "#10b981" : isLocked ? "#6b7280" : "#3b82f6"}
-        stroke={isSelected ? "#1d4ed8" : "#1e293b"}
-        strokeWidth="3"
-        className="cursor-pointer"
-        onClick={onSelect}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.5, delay: node.position * 0.1 }}
-      />
-
-      {/* Node icon */}
-      <foreignObject x="-12" y="-12" width="24" height="24" className="pointer-events-none">
-        <div className="flex items-center justify-center w-full h-full">
-          {isCompleted ? (
-            <CheckCircle className="w-6 h-6 text-white" />
-          ) : isLocked ? (
-            <Lock className="w-6 h-6 text-white" />
-          ) : (
-            <span className="text-white font-bold text-sm">{node.position}</span>
-          )}
-        </div>
-      </foreignObject>
-
-      {/* Node label */}
-      <text
-        x="0"
-        y="55"
-        textAnchor="middle"
-        className="fill-slate-700 text-sm font-medium pointer-events-none"
-        style={{ fontSize: `${12 / scale}px` }}
-      >
-        {node.title.length > 15 ? `${node.title.substring(0, 15)}...` : node.title}
-      </text>
-
-      {/* Difficulty badge */}
-      {node.metadata?.difficulty && (
-        <foreignObject x="-20" y="-50" width="40" height="16" className="pointer-events-none">
-          <div className="flex justify-center">
-            <Badge className={`text-xs px-2 py-0 ${getDifficultyColor(node.metadata.difficulty)} text-white`}>
-              {node.metadata.difficulty[0].toUpperCase()}
-            </Badge>
-          </div>
-        </foreignObject>
-      )}
-
-      {/* Optional badge */}
-      {node.isOptional && (
-        <foreignObject x="25" y="-25" width="20" height="20" className="pointer-events-none">
-          <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs font-bold">?</span>
-          </div>
-        </foreignObject>
-      )}
-    </g>
-  )
-}
-
-// Node Details Modal
-const NodeDetailsModal: React.FC<{
-  node: NodeDetails | null
-  isOpen: boolean
-  onClose: () => void
-  isCompleted: boolean
-  onComplete: () => void
-}> = ({ node, isOpen, onClose, isCompleted, onComplete }) => {
-  if (!node) return null
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                isCompleted ? "bg-green-500" : "bg-blue-500"
-              }`}
-            >
-              {isCompleted ? (
-                <CheckCircle className="w-5 h-5 text-white" />
-              ) : (
-                <span className="text-white text-sm font-bold">{node.position}</span>
-              )}
-            </div>
-            {node.title}
-          </DialogTitle>
-        </DialogHeader>
-
-        <ScrollArea className="max-h-[60vh]">
-          <div className="space-y-6">
-            {/* Node info */}
-            <div className="flex flex-wrap gap-2">
-              {node.estimatedDuration && (
-                <Badge variant="secondary">
-                  <Clock className="w-3 h-3 mr-1" />
-                  {node.estimatedDuration.value} {node.estimatedDuration.unit}
-                </Badge>
-              )}
-              {node.metadata?.difficulty && (
-                <Badge className={`text-white ${getDifficultyColor(node.metadata.difficulty)}`}>
-                  {node.metadata.difficulty}
-                </Badge>
-              )}
-              {node.isOptional && <Badge variant="outline">Optional</Badge>}
-            </div>
-
-            {/* Description */}
-            {node.description && (
-              <div>
-                <h4 className="font-semibold mb-2">Description</h4>
-                <p className="text-gray-600">{node.description}</p>
-              </div>
-            )}
-
-            {/* Dependencies */}
-            {node.dependencies && node.dependencies.length > 0 && (
-              <div>
-                <h4 className="font-semibold mb-2 flex items-center">
-                  <Target className="w-4 h-4 mr-2" />
-                  Dependencies
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {node.dependencies.map((dep) => (
-                    <Badge key={dep._id} variant="outline">
-                      {dep.title}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Resources */}
-            {node.resources && node.resources.length > 0 && (
-              <div>
-                <h4 className="font-semibold mb-2 flex items-center">
-                  <BookOpen className="w-4 h-4 mr-2" />
-                  Resources
-                </h4>
-                <div className="space-y-3">
-                  {node.resources.map((resource) => (
-                    <div key={resource._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        {getResourceIcon(resource.resourceType)}
-                        <div>
-                          <p className="font-medium">{resource.title}</p>
-                          {resource.description && <p className="text-sm text-gray-600">{resource.description}</p>}
-                        </div>
-                      </div>
-                      <Button size="sm" variant="ghost" asChild>
-                        <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Action buttons */}
-            <div className="flex gap-3 pt-4 border-t">
-              {!isCompleted && (
-                <Button onClick={onComplete} className="bg-green-500 hover:bg-green-600">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Mark as Complete
-                </Button>
-              )}
-              <Button variant="outline" onClick={onClose}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// Review Component
-const ReviewCard: React.FC<{ review: ReviewResponse }> = ({ review }) => {
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="border rounded-lg p-4">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center space-x-3">
-          <Avatar>
-            <AvatarImage src={review.user.avatar || "/placeholder.svg"} />
-            <AvatarFallback>{review.user.username[0].toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-semibold">{review.user.username}</p>
-            <div className="flex items-center space-x-2">
-              <div className="flex">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`w-4 h-4 ${i < review.rating ? "text-yellow-400 fill-current" : "text-gray-300"}`}
-                  />
-                ))}
-              </div>
-              {review.isVerified && (
-                <Badge variant="secondary" className="text-xs">
-                  Verified
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
-        <span className="text-sm text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</span>
-      </div>
-
-      {review.title && <h4 className="font-semibold mb-2">{review.title}</h4>}
-      <p className="text-gray-700 mb-3">{review.review}</p>
-
-      {(review.pros || review.cons) && (
-        <div className="grid md:grid-cols-2 gap-4">
-          {review.pros && review.pros.length > 0 && (
-            <div>
-              <h5 className="font-medium text-green-600 mb-2 flex items-center">
-                <ThumbsUp className="w-4 h-4 mr-1" />
-                Pros
-              </h5>
-              <ul className="text-sm space-y-1">
-                {review.pros.map((pro, index) => (
-                  <li key={index} className="text-gray-600">
-                    • {pro}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {review.cons && review.cons.length > 0 && (
-            <div>
-              <h5 className="font-medium text-red-600 mb-2 flex items-center">
-                <ThumbsDown className="w-4 h-4 mr-1" />
-                Cons
-              </h5>
-              <ul className="text-sm space-y-1">
-                {review.cons.map((con, index) => (
-                  <li key={index} className="text-gray-600">
-                    • {con}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-    </motion.div>
-  )
-}
-
-// Main Component
-const RoadmapDetails: React.FC = () => {
-  const dispatch = useAppDispatch()
-  const { isLoading, roadmap } = useAppSelector((state) => state.roadmap)
-  const { roadmapId } = useParams<{ roadmapId: string }>()
-
-  const [completedNodes, setCompletedNodes] = useState<Set<string>>(new Set())
-  const [selectedNode, setSelectedNode] = useState<NodeDetails | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [graphNodes, setGraphNodes] = useState<GraphNode[]>([])
-  const [scale, setScale] = useState(1)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-
-  const svgRef = useRef<SVGSVGElement>(null)
+  // Initialize nodes and edges
+  const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
+  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
 
   useEffect(() => {
-    if (!roadmapId) return
+    if (roadmapNodes && roadmapNodes.length > 0) {
+      const { nodes, edges } = convertNodesToFlowElements(roadmapNodes);
+      setRfNodes(nodes);
+      setRfEdges(edges);
+    }
+  }, [roadmapNodes, convertNodesToFlowElements]);
+
+  const onConnect = useCallback(
+    (params: Connection) => setRfEdges((eds) => addEdge(params, eds)),
+    [setRfEdges]
+  );
+
+  const onInit = useCallback(() => {
+    reactFlowInstance.fitView({ padding: 0.2 });
+  }, [reactFlowInstance]);
+
+  // Fetch roadmap details
+  useEffect(() => {
+    if (!roadmapId) return;
 
     dispatch(getRoadMapDetails(roadmapId))
-      .unwrap()
-      .then(() => {
-        // Success
+      .unwrap().then(()=>{
+        toast.success("roadmap details fetched successfully")
       })
       .catch((error) => {
-        console.error("Failed to fetch roadmap details:", error)
-      })
-  }, [roadmapId, dispatch])
+        toast.error(error )
+        console.error('Failed to fetch roadmap details:', error);
+      });
+  }, [roadmapId, dispatch]);
 
-  useEffect(() => {
-    if (roadmap?.nodes) {
-      const nodes = calculateNodePositions(roadmap.nodes)
-      setGraphNodes(nodes)
+  // Zoom handlers
+  const zoomIn = useCallback(() => {
+    reactFlowInstance.zoomIn();
+  }, [reactFlowInstance]);
 
-      const totalNodes = roadmap.nodes.length
-      const completed = completedNodes.size
-      setProgress((completed / totalNodes) * 100)
-    }
-  }, [roadmap?.nodes, completedNodes])
+  const zoomOut = useCallback(() => {
+    reactFlowInstance.zoomOut();
+  }, [reactFlowInstance]);
 
-  const handleNodeSelect = (node: NodeDetails) => {
-    setSelectedNode(node)
-    setIsModalOpen(true)
-  }
+  const zoomFit = useCallback(() => {
+    reactFlowInstance.fitView({ padding: 0.2 });
+  }, [reactFlowInstance]);
 
-  const handleNodeComplete = (nodeId: string) => {
-    setCompletedNodes((prev) => new Set([...prev, nodeId]))
-  }
-
-  const isNodeLocked = (node: NodeDetails) => {
-    if (!node.dependencies || node.dependencies.length === 0) return false
-    return !node.dependencies.every((dep) => completedNodes.has(dep._id))
-  }
-
-  const handleZoomIn = () => {
-    setScale((prev) => Math.min(prev * 1.2, 3))
-  }
-
-  const handleZoomOut = () => {
-    setScale((prev) => Math.max(prev / 1.2, 0.3))
-  }
-
-  const handleReset = () => {
-    setScale(1)
-    setPan({ x: 0, y: 0 })
-  }
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true)
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return
-    setPan({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    })
-  }
-
-  const handleMouseUp = () => {
-    setIsDragging(false)
-  }
+  // Toggle node expansion
+  const toggleNodeExpansion = (nodeId: string) => {
+    setExpandedNodes(prev => ({
+      ...prev,
+      [nodeId]: !prev[nodeId]
+    }));
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+          transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: 'linear' }}
           className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"
         />
       </div>
-    )
+    );
   }
 
-  if (!roadmap) {
+  if (!roadmap || !roadmapNodes) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-500">Roadmap not found</p>
       </div>
-    )
+    );
   }
 
-  const transform = `translate(${pan.x}, ${pan.y}) scale(${scale})`
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Hero Section */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-700 text-white"
-      >
-        <div className="absolute inset-0 bg-black/20" />
-        <div className="relative max-w-7xl mx-auto px-4 py-16">
-          <div className="grid lg:grid-cols-2 gap-8 items-center">
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
-                <div className="flex items-center space-x-2 mb-4">
-                  <Badge className="bg-white/20 text-white">{roadmap.roadmap.category}</Badge>
-                  {roadmap.roadmap.isFeatured && (
-                    <Badge className="bg-yellow-500 text-white">
-                      <Star className="w-3 h-3 mr-1" />
-                      Featured
-                    </Badge>
-                  )}
-                </div>
-
-                <h1 className="text-4xl lg:text-5xl font-bold mb-4">{roadmap.roadmap.title}</h1>
-                <p className="text-xl text-blue-100 mb-6">{roadmap.roadmap.description}</p>
-
-                <div className="flex flex-wrap items-center gap-4 mb-6">
-                  {roadmap.roadmap.estimatedDuration && (
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-5 h-5" />
-                      <span>
-                        {roadmap.roadmap.estimatedDuration.value} {roadmap.roadmap.estimatedDuration.unit}
-                      </span>
-                    </div>
-                  )}
-
-                  {roadmap.roadmap.stats && (
-                    <>
-                      <div className="flex items-center space-x-2">
-                        <Eye className="w-5 h-5" />
-                        <span>{roadmap.roadmap.stats.views.toLocaleString()} views</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-5 h-5" />
-                        <span>{roadmap.roadmap.stats.completions.toLocaleString()} completed</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Star className="w-5 h-5 fill-current" />
-                        <span>
-                          {roadmap.roadmap.stats.averageRating.toFixed(1)} ({roadmap.roadmap.stats.ratingsCount}{" "}
-                          reviews)
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="flex space-x-4">
-                  <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
-                    <PlayCircle className="w-5 h-5 mr-2" />
-                    Start Learning
-                  </Button>
-                  <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
-                    <Share2 className="w-5 h-5 mr-2" />
-                    Share
-                  </Button>
-                </div>
-              </motion.div>
+              <Badge variant="secondary" className="mb-2">
+                {roadmap.category}
+              </Badge>
+              <h1 className="text-3xl font-bold tracking-tight">{roadmap.title}</h1>
+              <p className="mt-2 text-blue-100 max-w-3xl">{roadmap.description}</p>
+              
+              <div className="mt-4 flex flex-wrap gap-2">
+                {roadmap.tags?.map((tag) => (
+                  <Badge key={tag} variant="outline" className="bg-white/10 text-white border-white/20">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
             </div>
+            
+            <div className="flex gap-2">
+              <Button variant="outline" className="bg-white/10 text-white hover:bg-white/20 border-white/20">
+                <Bookmark className="w-4 h-4 mr-2" /> Save
+              </Button>
+              <Button variant="outline" className="bg-white/10 text-white hover:bg-white/20 border-white/20">
+                <Share2 className="w-4 h-4 mr-2" /> Share
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-              className="relative"
-            >
-              {roadmap.roadmap.coverImage?.url && (
-                <img
-                  src={roadmap.roadmap.coverImage.url || "/placeholder.svg"}
-                  alt={roadmap.roadmap.title}
-                  className="rounded-lg shadow-2xl"
-                />
+      {/* Stats Bar */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-6 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4 text-yellow-500" />
+                <span className="font-medium">
+                  {roadmap.stats?.averageRating?.toFixed(1) || '4.5'}
+                  <span className="text-muted-foreground text-sm ml-1">({roadmap.stats?.ratingsCount || 0} reviews)</span>
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-blue-500" />
+                <span className="font-medium">{roadmap.stats?.completions || 0} completions</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Eye className="w-4 h-4 text-purple-500" />
+                <span className="font-medium">{roadmap.stats?.views || 0} views</span>
+              </div>
+              
+              {roadmap.estimatedDuration && (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-green-500" />
+                  <span className="font-medium">
+                    {roadmap.estimatedDuration.value} {roadmap.estimatedDuration.unit}
+                  </span>
+                </div>
               )}
-            </motion.div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {roadmap.isCommunityContributed && roadmap.contributor && (
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={roadmap.contributor.avatar} />
+                    <AvatarFallback>{roadmap.contributor.username.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm">Contributed by {roadmap.contributor.username}</span>
+                </div>
+              )}
+              {roadmap.isFeatured && (
+                <Badge variant="default" className="bg-yellow-100 text-yellow-800">
+                  <Star className="w-3 h-3 mr-1" /> Featured
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
-      </motion.div>
-
-      {/* Progress Bar */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-        className="bg-white border-b"
-      >
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Progress</span>
-            <span className="text-sm text-gray-600">
-              {completedNodes.size} of {roadmap.nodes.length} completed
-            </span>
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
-      </motion.div>
+      </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <Tabs defaultValue="roadmap" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="roadmap">Interactive Roadmap</TabsTrigger>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="reviews">Reviews</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="roadmap" className="space-y-6">
-            {/* Graph Controls */}
-            <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm">
-              <div className="flex items-center space-x-2">
-                <MapPin className="w-5 h-5 text-blue-500" />
-                <span className="font-medium">Interactive Learning Path</span>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Button size="sm" variant="outline" onClick={handleZoomOut}>
-                  <ZoomOut className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleZoomIn}>
-                  <ZoomIn className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleReset}>
-                  <RotateCcw className="w-4 h-4" />
-                </Button>
-                <span className="text-sm text-gray-500">{Math.round(scale * 100)}%</span>
-              </div>
-            </div>
-
-            {/* Graph Visualization */}
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="relative w-full h-[600px] bg-gradient-to-br from-slate-50 to-blue-50">
-                  <svg
-                    ref={svgRef}
-                    width="100%"
-                    height="100%"
-                    className="cursor-move"
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                  >
-                    <defs>
-                      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e2e8f0" strokeWidth="1" opacity="0.5" />
-                      </pattern>
-                    </defs>
-
-                    <rect width="100%" height="100%" fill="url(#grid)" />
-
-                    <g transform={transform}>
-                      {/* Render connections */}
-                      {graphNodes.map((node) =>
-                        node.connections.map((connectionId) => {
-                          const targetNode = graphNodes.find((n) => n.id === connectionId)
-                          if (!targetNode) return null
-
-                          return (
-                            <ConnectionLine
-                              key={`${node.id}-${connectionId}`}
-                              from={node}
-                              to={targetNode}
-                              isActive={completedNodes.has(node.id) && completedNodes.has(connectionId)}
-                              transform=""
-                            />
-                          )
-                        }),
-                      )}
-
-                      {/* Render nodes */}
-                      {graphNodes.map((graphNode) => (
-                        <GraphNodeComponent
-                          key={graphNode.id}
-                          graphNode={graphNode}
-                          isCompleted={completedNodes.has(graphNode.id)}
-                          isSelected={selectedNode?._id === graphNode.id}
-                          isLocked={isNodeLocked(graphNode.node)}
-                          onSelect={() => handleNodeSelect(graphNode.node)}
-                          onComplete={() => handleNodeComplete(graphNode.id)}
-                          transform=""
-                          scale={scale}
-                        />
-                      ))}
-                    </g>
-                  </svg>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Legend */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Layers className="w-5 h-5" />
-                  Legend
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">1</span>
-                    </div>
-                    <span className="text-sm">Available</span>
+      <div className="flex-1 overflow-hidden">
+        <div className="max-w-7xl mx-auto h-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+            <TabsList className="rounded-none border-b bg-transparent p-0">
+              <TabsTrigger value="roadmap" className="relative">
+                <GanttChart className="w-4 h-4 mr-2" />
+                Roadmap
+              </TabsTrigger>
+              <TabsTrigger value="details">
+                <BookOpen className="w-4 h-4 mr-2" />
+                Details
+              </TabsTrigger>
+              <TabsTrigger value="resources">
+                <Layers className="w-4 h-4 mr-2" />
+                Resources
+              </TabsTrigger>
+              <TabsTrigger value="reviews">
+                <Star className="w-4 h-4 mr-2" />
+                Reviews
+              </TabsTrigger>
+              <TabsTrigger value="stats">
+                <BarChart2 className="w-4 h-4 mr-2" />
+                Stats
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="roadmap" className="flex-1 overflow-hidden">
+              <div className="h-full flex flex-col">
+                <div className="p-4 border-b flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={viewMode === 'graph' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('graph')}
+                    >
+                      <LayoutGrid className="w-4 h-4 mr-2" />
+                      Graph View
+                    </Button>
+                    <Button
+                      variant={viewMode === 'list' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('list')}
+                    >
+                      <List className="w-4 h-4 mr-2" />
+                      List View
+                    </Button>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                      <CheckCircle className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="text-sm">Completed</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center">
-                      <Lock className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="text-sm">Locked</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">?</span>
-                    </div>
-                    <span className="text-sm">Optional</span>
+                  
+                  <div className="flex items-center gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="outline" size="sm" onClick={zoomIn}>
+                            <ZoomIn className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Zoom In</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="outline" size="sm" onClick={zoomOut}>
+                            <ZoomOut className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Zoom Out</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="outline" size="sm" onClick={zoomFit}>
+                            <RotateCcw className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Reset View</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="overview" className="space-y-8">
-            <div className="grid lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
+                
+                <div className="flex-1 overflow-hidden">
+                  {viewMode === 'graph' ? (
+                    <ReactFlow
+                      nodes={rfNodes}
+                      edges={rfEdges}
+                      onNodesChange={onNodesChange}
+                      onEdgesChange={onEdgesChange}
+                      onConnect={onConnect}
+                      nodeTypes={nodeTypes}
+                      onInit={onInit}
+                      fitView
+                      proOptions={{ hideAttribution: true }}
+                    >
+                      <Background />
+                      <Controls />
+                      <Panel position="top-right">
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={zoomIn}>
+                            <ZoomIn className="w-4 h-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={zoomOut}>
+                            <ZoomOut className="w-4 h-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={zoomFit}>
+                            <RotateCcw className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </Panel>
+                    </ReactFlow>
+                  ) : (
+                    <ScrollArea className="h-full p-6">
+                      <div className="space-y-4">
+                        {roadmapNodes.map((node) => (
+                          <TreeNode
+                            key={node._id}
+                            node={node}
+                            level={0}
+                            expandedNodes={expandedNodes}
+                            onToggleExpand={toggleNodeExpansion}
+                            onNodeClick={(node) => {
+                              setSelectedNode(node);
+                              setDialogOpen(true);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="details" className="flex-1 overflow-auto p-6">
+              <div className="max-w-3xl mx-auto">
                 <Card>
                   <CardHeader>
                     <CardTitle>About This Roadmap</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-700 leading-relaxed">
-                      {roadmap.roadmap.longDescription || roadmap.roadmap.description}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {roadmap.roadmap.tags && roadmap.roadmap.tags.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Tags</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-wrap gap-2">
-                        {roadmap.roadmap.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Quick Stats</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Difficulty</span>
-                      <Badge className={getDifficultyColor(roadmap.roadmap.difficulty)}>
-                        {roadmap.roadmap.difficulty}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Total Steps</span>
-                      <span className="font-semibold">{roadmap.nodes.length}</span>
-                    </div>
-                    {roadmap.roadmap.version && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Version</span>
-                        <span className="font-semibold">v{roadmap.roadmap.version}</span>
+                    <p className="text-muted-foreground">{roadmap.longDescription || roadmap.description}</p>
+                    
+                    {roadmap.prerequisites && roadmap.prerequisites.length > 0 && (
+                      <div className="mt-6">
+                        <h3 className="font-semibold mb-2 flex items-center gap-2">
+                          <Lock className="w-4 h-4" />
+                          Prerequisites
+                        </h3>
+                        <div className="space-y-2">
+                          {roadmap.prerequisites.map((prereq) => (
+                            <div key={prereq._id} className="flex items-center gap-2">
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                              <a href={`/roadmaps/${prereq.slug}`} className="text-blue-600 hover:underline">
+                                {prereq.title}
+                              </a>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </CardContent>
                 </Card>
-
-                {roadmap.roadmap.contributor && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Contributor</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center space-x-3">
-                        <Avatar>
-                          <AvatarImage src={roadmap.roadmap.contributor.avatar || "/placeholder.svg"} />
-                          <AvatarFallback>{roadmap.roadmap.contributor.username[0].toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold">{roadmap.roadmap.contributor.username}</p>
-                          {roadmap.roadmap.isCommunityContributed && (
-                            <Badge variant="outline" className="text-xs">
-                              Community Contributor
-                            </Badge>
-                          )}
+                
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle>Roadmap Details</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-muted-foreground" />
+                          <span>
+                            <span className="font-medium">Duration:</span>{' '}
+                            {roadmap.estimatedDuration
+                              ? `${roadmap.estimatedDuration.value} ${roadmap.estimatedDuration.unit}`
+                              : 'Self-paced'}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Target className="w-4 h-4 text-muted-foreground" />
+                          <span>
+                            <span className="font-medium">Difficulty:</span>{' '}
+                            {roadmap.difficulty || 'Intermediate'}
+                          </span>
                         </div>
                       </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-muted-foreground" />
+                          <span>
+                            <span className="font-medium">Category:</span> {roadmap.category}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Flag className="w-4 h-4 text-muted-foreground" />
+                          <span>
+                            <span className="font-medium">Version:</span> {roadmap.version || '1.0'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="resources" className="flex-1 overflow-auto p-6">
+              <div className="max-w-3xl mx-auto">
+                <h2 className="text-2xl font-bold mb-6">All Resources</h2>
+                
+                <div className="space-y-6">
+                  {roadmapNodes.map((node) => (
+                    <div key={node._id}>
+                      <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        {node.title}
+                      </h3>
+                      
+                      {node.resources && node.resources.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {node.resources.map((resource) => (
+                            <Card key={resource._id} className="hover:shadow-md transition-shadow">
+                              <CardHeader className="pb-3">
+                                <div className="flex justify-between items-start">
+                                  <CardTitle className="text-base">{resource.title}</CardTitle>
+                                  <Badge variant="outline">{resource.resourceType}</Badge>
+                                </div>
+                                {resource.difficulty && (
+                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                    <span>Difficulty:</span>
+                                    <Badge variant="secondary" className="px-1.5 py-0.5">
+                                      {resource.difficulty}
+                                    </Badge>
+                                  </div>
+                                )}
+                              </CardHeader>
+                              <CardContent>
+                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                  {resource.description || 'No description available'}
+                                </p>
+                              </CardContent>
+                              <CardFooter className="flex justify-between items-center">
+                                <Button variant="outline" size="sm" asChild>
+                                  <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="w-4 h-4 mr-2" />
+                                    Visit Resource
+                                  </a>
+                                </Button>
+                                {resource.stats?.views && (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Eye className="w-3 h-3" />
+                                    {resource.stats.views} views
+                                  </span>
+                                )}
+                              </CardFooter>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-sm">No resources for this node</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="reviews" className="flex-1 overflow-auto p-6">
+              <div className="max-w-3xl mx-auto">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">Reviews</h2>
+                  <Button>Write a Review</Button>
+                </div>
+                
+                {roadmap.reviews && roadmap.reviews.length > 0 ? (
+                  <div className="space-y-6">
+                    {roadmap.reviews.map((review) => (
+                      <Card key={review._id}>
+                        <CardHeader>
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarImage src={review.user.avatar} />
+                                <AvatarFallback>{review.user.username.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{review.user.username}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {new Date(review.createdAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Rating value={review.rating} readOnly />
+                              {review.isVerified && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <CheckCircle className="w-4 h-4 text-blue-500" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Verified Review</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {review.title && <h3 className="font-semibold mb-2">{review.title}</h3>}
+                          <p className="text-muted-foreground">{review.review}</p>
+                          
+                          {(review.pros || review.cons) && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                              {review.pros && review.pros.length > 0 && (
+                                <div className="bg-green-50 p-3 rounded-lg">
+                                  <h4 className="font-medium text-green-800 flex items-center gap-2 mb-2">
+                                    <ThumbsUp className="w-4 h-4" />
+                                    Pros
+                                  </h4>
+                                  <ul className="space-y-1 text-sm text-green-700">
+                                    {review.pros.map((pro, i) => (
+                                      <li key={i} className="flex items-start gap-2">
+                                        <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-green-600" />
+                                        <span>{pro}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              
+                              {review.cons && review.cons.length > 0 && (
+                                <div className="bg-red-50 p-3 rounded-lg">
+                                  <h4 className="font-medium text-red-800 flex items-center gap-2 mb-2">
+                                    <ThumbsDown className="w-4 h-4" />
+                                    Cons
+                                  </h4>
+                                  <ul className="space-y-1 text-sm text-red-700">
+                                    {review.cons.map((con, i) => (
+                                      <li key={i} className="flex items-start gap-2">
+                                        <HelpCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-red-600" />
+                                        <span>{con}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="py-10 text-center">
+                      <Star className="w-10 h-10 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No Reviews Yet</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto">
+                        Be the first to share your experience with this roadmap.
+                      </p>
+                      <Button className="mt-4">Write a Review</Button>
                     </CardContent>
                   </Card>
                 )}
               </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="reviews" className="space-y-6">
-            {roadmap.roadmap.reviews && roadmap.roadmap.reviews.length > 0 ? (
-              <div className="space-y-6">
-                {roadmap.roadmap.reviews.map((review) => (
-                  <ReviewCard key={review._id} review={review} />
-                ))}
+            </TabsContent>
+            
+            <TabsContent value="stats" className="flex-1 overflow-auto p-6">
+              <div className="max-w-3xl mx-auto">
+                <h2 className="text-2xl font-bold mb-6">Roadmap Statistics</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Engagement</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-medium">Views</span>
+                            <span className="text-sm font-medium">{roadmap.stats?.views || 0}</span>
+                          </div>
+                          <Progress value={(roadmap.stats?.views || 0) / 1000 * 100} className="h-2" />
+                        </div>
+                        
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-medium">Completions</span>
+                            <span className="text-sm font-medium">{roadmap.stats?.completions || 0}</span>
+                          </div>
+                          <Progress value={(roadmap.stats?.completions || 0) / 100 * 100} className="h-2" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Ratings Distribution</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {[5, 4, 3, 2, 1].map((stars) => (
+                          <div key={stars} className="flex items-center gap-3">
+                            <div className="flex items-center w-8">
+                              <span className="text-sm text-muted-foreground">{stars}</span>
+                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            </div>
+                            <Progress value={Math.random() * 100} className="h-2 flex-1" />
+                            <span className="text-sm text-muted-foreground w-8 text-right">
+                              {Math.floor(Math.random() * 100)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
-            ) : (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <p className="text-gray-500">No reviews yet. Be the first to review this roadmap!</p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
 
-      {/* Node Details Modal */}
-      <NodeDetailsModal
-        node={selectedNode}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        isCompleted={selectedNode ? completedNodes.has(selectedNode._id) : false}
-        onComplete={() => {
-          if (selectedNode) {
-            handleNodeComplete(selectedNode._id)
-            setIsModalOpen(false)
-          }
-        }}
-      />
+      {/* Node Details Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
+          {selectedNode && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedNode.title}</DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                {selectedNode.description && (
+                  <p className="text-muted-foreground">{selectedNode.description}</p>
+                )}
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {selectedNode.nodeType && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Type</h4>
+                      <p className="capitalize">{selectedNode.nodeType}</p>
+                    </div>
+                  )}
+                  
+                  {selectedNode.difficulty && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Difficulty</h4>
+                      <Badge variant="outline">{selectedNode.difficulty}</Badge>
+                    </div>
+                  )}
+                  
+                  {selectedNode.estimatedDuration && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Duration</h4>
+                      <p>
+                        {selectedNode.estimatedDuration.value} {selectedNode.estimatedDuration.unit}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedNode.isOptional && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Optional</h4>
+                      <p>Yes</p>
+                    </div>
+                  )}
+                </div>
+                
+                {(selectedNode.dependencies || selectedNode.prerequisites) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedNode.dependencies && selectedNode.dependencies.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Dependencies</h4>
+                        <div className="space-y-2">
+                          {selectedNode.dependencies.map((dep) => (
+                            <div key={dep._id} className="flex items-center gap-2">
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                              <span>{dep.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {selectedNode.prerequisites && selectedNode.prerequisites.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Prerequisites</h4>
+                        <div className="space-y-2">
+                          {selectedNode.prerequisites.map((prereq) => (
+                            <div key={prereq._id} className="flex items-center gap-2">
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                              <span>{prereq.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {selectedNode.resources && selectedNode.resources.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-2">Resources</h4>
+                    <div className="space-y-2">
+                      {selectedNode.resources.map((resource) => (
+                        <div key={resource._id} className="p-3 border rounded-lg hover:bg-muted/50">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h5 className="font-medium">{resource.title}</h5>
+                              <p className="text-sm text-muted-foreground line-clamp-1">
+                                {resource.description}
+                              </p>
+                            </div>
+                            <Badge variant="outline">{resource.resourceType}</Badge>
+                          </div>
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="mt-2 px-0 h-auto text-blue-600"
+                            asChild
+                          >
+                            <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="w-4 h-4 mr-1" />
+                              Visit Resource
+                            </a>
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
-  )
-}
+  );
+};
 
-export default RoadmapDetails
+// TreeNode component for list view
+const TreeNode = ({
+  node,
+  level,
+  expandedNodes,
+  onToggleExpand,
+  onNodeClick,
+}: {
+  node: NodeDetails;
+  level: number;
+  expandedNodes: Record<string, boolean>;
+  onToggleExpand: (nodeId: string) => void;
+  onNodeClick: (node: NodeDetails) => void;
+}) => {
+  const hasChildren = node.children && node.children.length > 0;
+  const isExpanded = expandedNodes[node._id] ?? false;
+
+  return (
+    <div>
+      <div
+        className={cn(
+          'flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors',
+          level > 0 && 'ml-6'
+        )}
+        style={{ paddingLeft: `${level * 12}px` }}
+        onClick={() => onNodeClick(node)}
+      >
+        {hasChildren ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 rounded-full"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpand(node._id);
+            }}
+          >
+            {isExpanded ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </Button>
+        ) : (
+          <div className="w-6" />
+        )}
+        
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium truncate">{node.title}</h3>
+          {node.description && (
+            <p className="text-sm text-muted-foreground truncate">{node.description}</p>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {node.estimatedDuration && (
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {node.estimatedDuration.value} {node.estimatedDuration.unit}
+            </Badge>
+          )}
+          
+          {node.difficulty && (
+            <Badge variant="outline">{node.difficulty}</Badge>
+          )}
+          
+          {node.isOptional && (
+            <Badge variant="secondary">Optional</Badge>
+          )}
+        </div>
+      </div>
+      
+      {isExpanded && hasChildren && (
+        <div className="space-y-1">
+          {node.children?.map((child) => (
+            <TreeNode
+              key={child._id}
+              node={child}
+              level={level + 1}
+              expandedNodes={expandedNodes}
+              onToggleExpand={onToggleExpand}
+              onNodeClick={onNodeClick}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+
+const RoadmapDetails = () => {
+  return (
+    <ReactFlowProvider>
+      <RoadmapDetailsInner />
+    </ReactFlowProvider>
+  );
+};
+
+export default RoadmapDetails;

@@ -99,5 +99,5 @@ export interface RoadmapDetails {
 
 export interface RoadmapDetailsResponse {
   roadmap: RoadmapDetails;
-  nodes: NodeDetails[];
+  roadmapNodes: NodeDetails[];
 }

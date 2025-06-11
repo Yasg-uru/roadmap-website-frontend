@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, Network, Edit3, Download } from "lucide-react"
 import { motion } from "framer-motion"
+import { useNavigate } from "react-router-dom"
 
 export default function HeroSection() {
   const [searchValue, setSearchValue] = useState("")
+const navigate = useNavigate();
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -87,10 +89,13 @@ export default function HeroSection() {
         <motion.div className="flex flex-col sm:flex-row gap-4 justify-center items-center" variants={itemVariants}>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
+            onClick={()=>{
+            navigate('/generate-roadmap')
+            }}
               size="lg"
               className="h-14 px-8 text-lg font-semibold bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
             >
-              Create Your Roadmap
+              Generate Your Roadmap
             </Button>
           </motion.div>
 

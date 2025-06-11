@@ -7,13 +7,20 @@ import ForgotPassword from "./pages/authpages/forgot-password"
 import ResetPassword from "./pages/authpages/reset-password"
 import Navbar from "./pages/main-pages/navbar"
 import Roadmaps from "./pages/roadmap/roadmaps"
-// import RoadmapDetails from "./pages/roadmap/getroadmapdetails-page"
-import { RoadmapGenerator } from "./pages/main-pages/roadmap-generator"
 import Home from "./pages/main-pages/home-page"
 import Roadmap from "./pages/main-pages/roadmap.example"
 import RoadmapDetails from "./pages/roadmap/roadmapDetails/roadmap-details"
+import { useEffect } from "react"
+import { socket } from "./helper/useSocket"
+import { useAuth } from "./contexts/authContext"
+import GenerateRoadmap from "./pages/roadmap-generation/generate-roadmap"
 
 function App() {
+  const {user}= useAuth()
+  useEffect(()=>{
+socket.emit("registerUser" , user?._id);
+
+  }, [])
   return (
     <>
     <Navbar/>
@@ -28,6 +35,7 @@ function App() {
 
     <Route path="/roadmaps" element={<Roadmaps/>}/>
     <Route path="/details/:roadmapId"  element={<RoadmapDetails/>}/>
+  <Route path="/generate-roadmap" element= {<GenerateRoadmap/>} />
    </Routes>
    </>
   )

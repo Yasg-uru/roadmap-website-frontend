@@ -7,10 +7,11 @@ import ForgotPassword from "./pages/authpages/forgot-password"
 import ResetPassword from "./pages/authpages/reset-password"
 import Navbar from "./pages/main-pages/navbar"
 import Roadmaps from "./pages/roadmap/roadmaps"
-import RoadmapDetails from "./pages/roadmap/getroadmapdetails-page"
+// import RoadmapDetails from "./pages/roadmap/getroadmapdetails-page"
 import { RoadmapGenerator } from "./pages/main-pages/roadmap-generator"
 import Home from "./pages/main-pages/home-page"
 import Roadmap from "./pages/main-pages/roadmap.example"
+import RoadmapDetails from "./pages/roadmap/roadmapDetails/roadmap-details"
 
 function App() {
   return (

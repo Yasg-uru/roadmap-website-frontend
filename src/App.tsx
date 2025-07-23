@@ -31,6 +31,7 @@ socket.emit("registerUser" , user?._id);
     <Route path = "/verify/:email"  element={<Verify/>}/>
     <Route path="/login" element={<Login/>}/>
     <Route path="/forgot-password" element={<ForgotPassword/>}/>
+     
     <Route path="/reset-password/:token" element={<ResetPassword/>}/>
 
     <Route path="/roadmaps" element={<Roadmaps/>}/>

@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+
 import { Route, Routes } from "react-router-dom"
 import Signup from "./pages/authpages/register-user"
 import Verify from "./pages/authpages/otp-verify"

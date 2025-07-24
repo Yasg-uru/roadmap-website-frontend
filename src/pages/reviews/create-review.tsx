@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { X, Plus, Star } from "lucide-react";
+import { useAuth } from "@/contexts/authContext";
 
 interface ReviewModalProps {
   isOpen: boolean;
@@ -54,9 +55,8 @@ export default function ReviewModal({
   const [consInput, setConsInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock user ID - in real app this would come from auth context
-  const userId = "user-123";
-
+const {user} = useAuth();
+const userId = user?._id ??  ""
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 

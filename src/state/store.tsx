@@ -1,11 +1,15 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { authReducer } from './slices/authSlice';
-import roadmapReducer from "./slices/roadmapSlice"
+import roadmapReducer from "./slices/roadmapSlice"; 
+import  analyticsReducer  from './slices/analyticsSlice';
+import bookmarkReducer from './slices/bookmarkSlice'; 
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    roadmap:roadmapReducer
+    roadmap:roadmapReducer,
+    analytics: analyticsReducer, 
+    bookmark: bookmarkReducer
   },
 });
 

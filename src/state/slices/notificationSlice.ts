@@ -105,7 +105,7 @@ const notificationSlice = createSlice({
            })
 
 
-           .addCase(markAllNotificationAsRead.fulfilled, (state, action:PayloadAction<Notification[]>) => {
+           .addCase(markAllNotificationAsRead.fulfilled, (state, _action: PayloadAction<Notification[]>) => {
               state.notification = state.notification.map(n => ({
                   ...n, 
                   isRead: true, 

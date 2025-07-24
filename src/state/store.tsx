@@ -3,7 +3,8 @@ import { authReducer } from './slices/authSlice';
 import roadmapReducer from "./slices/roadmapSlice"; 
 import  analyticsReducer  from './slices/analyticsSlice';
 import bookmarkReducer from './slices/bookmarkSlice'; 
-import notificationReducer from './slices/notificationSlice'; 
+import notificationReducer from './slices/notificationSlice';
+import reviewReducer from './slices/reviewSlice';  
 
 export const store = configureStore({
   reducer: {
@@ -11,7 +12,8 @@ export const store = configureStore({
     roadmap:roadmapReducer,
     analytics: analyticsReducer, 
     bookmark: bookmarkReducer,
-    notification: notificationReducer, 
+    notification: notificationReducer,
+    review: reviewReducer,  
   },
 });
 

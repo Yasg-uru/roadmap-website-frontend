@@ -1,25 +1,35 @@
+type RoadmapCategory =
+  | "frontend"
+  | "backend"
+  | "devops"
+  | "mobile"
+  | "data-science"
+  | "design"
+  | "product-management"
+  | "cyber-security"
+  | "cloud"
+  | "blockchain"
+  | "other";
+
+type RoadmapDifficulty = "beginner" | "intermediate" | "advanced" | "expert";
+
+interface ContributorLite {
+  _id: string;
+  username: string;
+  avatar?: string;
+}
+
 export interface IRoadmap {
   _id: string;
   title: string;
   slug?: string;
   description: string;
   longDescription?: string;
-  category:
-    | 'frontend'
-    | 'backend'
-    | 'devops'
-    | 'mobile'
-    | 'data-science'
-    | 'design'
-    | 'product-management'
-    | 'cybersecurity'
-    | 'cloud'
-    | 'blockchain'
-    | 'other';
-  difficulty?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  category: RoadmapCategory;
+  difficulty?: RoadmapDifficulty;
   estimatedDuration?: {
     value: number;
-    unit: 'hours' | 'days' | 'weeks' | 'months';
+    unit: "hours" | "days" | "weeks" | "months";
   };
   coverImage?: {
     public_id: string;
@@ -27,13 +37,9 @@ export interface IRoadmap {
   };
   isFeatured?: boolean;
   isCommunityContributed?: boolean;
-  contributor?: {
-    _id: string;
-    username: string;
-    avatar?: string;
-  };
+  contributor?: ContributorLite | null; // populated select("username avatar")
   tags?: string[];
-  prerequisites?: string[]; // Array of Roadmap IDs
+  prerequisites?: string[]; // roadmap ids
   stats?: {
     views: number;
     completions: number;
@@ -42,13 +48,11 @@ export interface IRoadmap {
   };
   version?: number;
   isPublished?: boolean;
-  publishedAt?: string | Date;
-  lastUpdated?: string | Date;
-  createdAt?: string | Date;
-  updatedAt?: string | Date;
-  updatedBy?: string;
+  publishedAt?: string;   // Dates will be strings once serialized to JSON
+  lastUpdated?: string;
+  updatedBy?: string | null;
 
-  // Optional virtuals
-  nodes?: any[]; // optionally type this if you know the structure
-  reviews?: any[];
+  // added by `{ timestamps: true }`
+  createdAt: string;
+  updatedAt: string;
 }

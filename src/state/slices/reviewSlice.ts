@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 import type { Review } from '../../types/user/review/review';
+import axiosInstance from '@/helper/axiosInstance';
 
 interface ReviewState {
   reviews: Review[];
@@ -45,7 +46,7 @@ export const updateReview = createAsyncThunk(
   'reviews/updateReview',
   async ({ id, data }: { id: string; data: Partial<Review> }, thunkAPI) => {
     try {
-      const res = await axios.patch(`/api/reviews/${id}`, data);
+      const res = await axiosInstance.patch(`/api/reviews/${id}`, data);
       return res.data as Review;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.response?.data || 'Failed to update review');

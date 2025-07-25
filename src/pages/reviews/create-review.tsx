@@ -1,5 +1,3 @@
-"use client";
-
 import type React from "react";
 
 import { useState } from "react";
@@ -16,6 +14,8 @@ import {
 } from "@/components/ui/select";
 import { X, Plus, Star } from "lucide-react";
 import { useAuth } from "@/contexts/authContext";
+import { useAppDispatch } from "@/hooks/useAppDispatch";
+import { createReview } from "@/state/slices/reviewSlice";
 
 interface ReviewModalProps {
   isOpen: boolean;
@@ -24,7 +24,7 @@ interface ReviewModalProps {
 }
 
 interface FormData {
-  rating: string;
+  rating: number | null;
   title: string;
   review: string;
   pros: string[];
@@ -42,8 +42,10 @@ export default function ReviewModal({
   onClose,
   roadmapId,
 }: ReviewModalProps) {
+    const dispatch = useAppDispatch();
+    
   const [formData, setFormData] = useState<FormData>({
-    rating: "",
+    rating: null,
     title: "",
     review: "",
     pros: [],
@@ -55,12 +57,13 @@ export default function ReviewModal({
   const [consInput, setConsInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-const {user} = useAuth();
-const userId = user?._id ??  ""
+  const {user} = useAuth();
+  const userId = user?._id ?? "";
+
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!formData.rating) {
+    if (formData.rating === null) {
       newErrors.rating = "Rating is required";
     }
 
@@ -84,7 +87,7 @@ const userId = user?._id ??  ""
     if (!validateForm()) return;
 
     setIsSubmitting(true);
-
+    dispatch(createReview({ ...formData, rating: formData.rating ?? undefined })).unwrap().then(()=>{}).catch((error)=>{})
     try {
       // Mock API call - replace with actual submission logic
       const reviewData = {
@@ -101,7 +104,7 @@ const userId = user?._id ??  ""
 
       // Reset form and close modal on success
       setFormData({
-        rating: "",
+        rating: null,
         title: "",
         review: "",
         pros: [],
@@ -179,9 +182,9 @@ const userId = user?._id ??  ""
                 Rating *
               </Label>
               <Select
-                value={formData.rating}
+                value={formData.rating ? formData.rating.toString() : ""}
                 onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, rating: value }))
+                  setFormData((prev) => ({ ...prev, rating: parseInt(value) }))
                 }
               >
                 <SelectTrigger className="bg-slate-700 border-slate-600 text-slate-200 focus:border-blue-400">

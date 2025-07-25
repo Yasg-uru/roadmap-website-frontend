@@ -11,7 +11,7 @@ export const getRoadmaps = createAsyncThunk(
   "roadmap/getroadmaps",
   async (page: number, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get("/roadmap/roadmaps", {
+      const response = await axiosInstance.get("/roadmap/", {
         withCredentials: true,
         params: { page },
       });

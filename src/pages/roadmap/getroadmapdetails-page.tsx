@@ -1,996 +1,668 @@
-import React, { useEffect, useCallback, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import ReactFlow, {
-  Background,
-  Controls,
-  
-  Panel,
-  useNodesState,
-  useEdgesState,
-  MarkerType,
-  addEdge,
-  ReactFlowProvider,
-  useReactFlow,
-} from 'reactflow';
-import type { Connection, Node , Edge } from 'reactflow';
-import 'reactflow/dist/style.css';
-import { motion } from 'framer-motion';
 
-import { getRoadMapDetails } from '@/state/slices/roadmapSlice';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+import { useState } from "react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Progress } from "@/components/ui/progress"
 import {
-  Clock,
   Star,
+  Clock,
   Users,
   Eye,
-  CheckCircle,
-  PlayCircle,
-  BookOpen,
-  Link as LinkIcon,
   Trophy,
-  Target,
-  ThumbsUp,
-  ThumbsDown,
+  BookOpen,
+  Play,
+  FileText,
   ExternalLink,
-  Share2,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
-  Lock,
-  MapPin,
-  Layers,
   ChevronRight,
   ChevronDown,
-  GanttChart,
-  BarChart2,
-  List,
-  LayoutGrid,
-  HelpCircle,
-  Bookmark,
-  Flag,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { NodeDetails } from '@/types/user/roadmap/roadmap-details';
-import { useAppDispatch, useAppSelector } from '@/hooks/useAppDispatch';
-import RoadmapNode from "./roadmapNode"
-import { toast } from 'sonner';
-const nodeTypes = {
-  roadmapNode: RoadmapNode,
-};
+  Calendar,
+  UserIcon,
+  Tag,
+  CheckCircle2,
+  Circle,
+  AlertCircle,
+} from "lucide-react"
 
-const RoadmapDetailsInner = () => {
-  const dispatch = useAppDispatch();
-  const { isLoading} = useAppSelector((state) => state.roadmap);
-  const Roadmap = useAppSelector(state=>state.roadmap.roadmap);
-  const roadmap = Roadmap?.roadmap;
-  const roadmapNodes = Roadmap?.roadmapNodes;
-  const { roadmapId } = useParams<{ roadmapId: string }>();
-  const reactFlowInstance = useReactFlow();
-  const [activeTab, setActiveTab] = useState('roadmap');
-  const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
-  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
-  const [selectedNode, setSelectedNode] = useState<NodeDetails | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+// Types (as provided)
+type DurationUnit = "hours" | "days" | "weeks" | "months"
+type RoadmapCategory =
+  | "frontend"
+  | "backend"
+  | "devops"
+  | "mobile"
+  | "data-science"
+  | "design"
+  | "product-management"
+  | "cyber-security"
+  | "cloud"
+  | "blockchain"
+  | "other"
+type RoadmapDifficulty = "beginner" | "intermediate" | "advanced" | "expert"
+type NodeType = "topic" | "skill" | "milestone" | "project" | "checkpoint"
+type ImportanceLevel = "low" | "medium" | "high" | "critical"
+type NodeDifficulty = "beginner" | "intermediate" | "advanced"
 
-  // Convert roadmap nodes to ReactFlow nodes and edges
-  const convertNodesToFlowElements = useCallback((nodes: NodeDetails[], parentId: string | null = null, xPos = 0, yPos = 0) => {
-    const flowNodes: Node[] = [];
-    const flowEdges: Edge[] = [];
-    let currentY = yPos;
+interface RoadmapUser {
+  _id: string
+  username: string
+  avatar?: string
+}
 
-    nodes.forEach((node, index) => {
-      const nodeId = node._id;
-      const isExpanded = expandedNodes[nodeId] ?? false;
+interface Review {
+  _id: string
+  user: RoadmapUser
+  rating: number
+  comment?: string
+  createdAt: Date
+}
 
-      // Create flow node
-      flowNodes.push({
-        id: nodeId,
-        type: 'roadmapNode',
-        position: { x: xPos, y: currentY },
-        data: {
-          ...node,
-          isExpanded,
-          onExpandToggle: () => {
-            setExpandedNodes(prev => ({
-              ...prev,
-              [nodeId]: !prev[nodeId]
-            }));
-          },
-          onNodeClick: () => {
-            setSelectedNode(node);
-            setDialogOpen(true);
-          }
+interface Resource {
+  _id: string
+  title: string
+  url: string
+  type: "article" | "video" | "course" | "documentation" | "other"
+}
+
+interface RoadmapStats {
+  views: number
+  completions: number
+  averageRating: number
+  ratingsCount: number
+}
+
+interface RoadmapNode {
+  _id: string
+  title: string
+  description?: string
+  depth: number
+  position: number
+  nodeType?: NodeType
+  isOptional?: boolean
+  estimatedDuration?: {
+    value: number
+    unit: "hours" | "days" | "weeks"
+  }
+  resources?: Resource[]
+  dependencies?: Array<{ _id: string; title: string }>
+  prerequisites?: Array<{ _id: string; title: string }>
+  metadata?: {
+    keywords?: string[]
+    difficulty?: NodeDifficulty
+    importance?: ImportanceLevel
+  }
+  children?: RoadmapNode[]
+}
+
+interface RoadmapDetails {
+  _id: string
+  title: string
+  slug?: string
+  description: string
+  longDescription?: string
+  category: RoadmapCategory
+  difficulty?: RoadmapDifficulty
+  estimatedDuration?: {
+    value: number
+    unit: DurationUnit
+  }
+  coverImage?: {
+    public_id: string
+    url: string
+  }
+  isFeatured?: boolean
+  isCommunityContributed?: boolean
+  contributor?: RoadmapUser
+  tags?: string[]
+  prerequisites?: Array<{ _id: string; title: string }>
+  stats?: RoadmapStats
+  version?: number
+  isPublished?: boolean
+  publishedAt?: Date
+  lastUpdated?: Date
+  updatedBy?: RoadmapUser
+  reviews?: Review[]
+}
+
+interface RoadmapDetailsResponse {
+  roadmap: RoadmapDetails
+  nodes: RoadmapNode[]
+}
+
+// Mock data
+const mockData: RoadmapDetailsResponse = {
+  roadmap: {
+    _id: "1",
+    title: "Full Stack Web Development",
+    slug: "full-stack-web-development",
+    description: "Complete roadmap to become a full-stack web developer",
+    longDescription:
+      "This comprehensive roadmap will guide you through everything you need to know to become a proficient full-stack web developer. From frontend technologies like React and Vue.js to backend frameworks like Node.js and databases, this roadmap covers it all.",
+    category: "frontend",
+    difficulty: "intermediate",
+    estimatedDuration: { value: 6, unit: "months" },
+    coverImage: {
+      public_id: "roadmap_cover",
+      url: "/placeholder.svg?height=300&width=600",
+    },
+    isFeatured: true,
+    isCommunityContributed: false,
+    contributor: {
+      _id: "user1",
+      username: "techguru",
+      avatar: "/placeholder.svg?height=40&width=40",
+    },
+    tags: ["javascript", "react", "nodejs", "mongodb", "fullstack"],
+    prerequisites: [
+      { _id: "prereq1", title: "Basic HTML & CSS" },
+      { _id: "prereq2", title: "JavaScript Fundamentals" },
+    ],
+    stats: {
+      views: 15420,
+      completions: 2340,
+      averageRating: 4.7,
+      ratingsCount: 892,
+    },
+    version: 2,
+    isPublished: true,
+    publishedAt: new Date("2024-01-15"),
+    lastUpdated: new Date("2024-12-01"),
+    reviews: [
+      {
+        _id: "review1",
+        user: { _id: "user2", username: "devlearner", avatar: "/placeholder.svg?height=32&width=32" },
+        rating: 5,
+        comment: "Excellent roadmap! Very comprehensive and well-structured.",
+        createdAt: new Date("2024-11-20"),
+      },
+      {
+        _id: "review2",
+        user: { _id: "user3", username: "codingpro", avatar: "/placeholder.svg?height=32&width=32" },
+        rating: 4,
+        comment: "Great content, helped me land my first full-stack role!",
+        createdAt: new Date("2024-11-15"),
+      },
+    ],
+  },
+  nodes: [
+    {
+      _id: "node1",
+      title: "Frontend Fundamentals",
+      description: "Master the basics of frontend development",
+      depth: 0,
+      position: 0,
+      nodeType: "milestone",
+      estimatedDuration: { value: 4, unit: "weeks" },
+      metadata: { difficulty: "beginner", importance: "critical" },
+      resources: [
+        { _id: "res1", title: "HTML & CSS Crash Course", url: "#", type: "video" },
+        { _id: "res2", title: "JavaScript Fundamentals", url: "#", type: "course" },
+      ],
+      children: [
+        {
+          _id: "node1-1",
+          title: "HTML & CSS Mastery",
+          description: "Learn semantic HTML and modern CSS",
+          depth: 1,
+          position: 0,
+          nodeType: "topic",
+          estimatedDuration: { value: 2, unit: "weeks" },
+          metadata: { difficulty: "beginner", importance: "high" },
+          resources: [{ _id: "res3", title: "MDN HTML Guide", url: "#", type: "documentation" }],
         },
-      });
+        {
+          _id: "node1-2",
+          title: "JavaScript ES6+",
+          description: "Modern JavaScript features and concepts",
+          depth: 1,
+          position: 1,
+          nodeType: "topic",
+          estimatedDuration: { value: 2, unit: "weeks" },
+          metadata: { difficulty: "intermediate", importance: "critical" },
+        },
+      ],
+    },
+    {
+      _id: "node2",
+      title: "React Development",
+      description: "Build modern UIs with React",
+      depth: 0,
+      position: 1,
+      nodeType: "skill",
+      estimatedDuration: { value: 6, unit: "weeks" },
+      metadata: { difficulty: "intermediate", importance: "high" },
+      dependencies: [{ _id: "node1", title: "Frontend Fundamentals" }],
+    },
+  ],
+}
 
-      // Create edge from parent if exists
-      if (parentId) {
-        flowEdges.push({
-          id: `e${parentId}-${nodeId}`,
-          source: parentId,
-          target: nodeId,
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-          },
-          style: {
-            strokeWidth: 2,
-          },
-        });
-      }
+// Helper functions
+const getDifficultyColor = (difficulty?: RoadmapDifficulty | NodeDifficulty) => {
+  switch (difficulty) {
+    case "beginner":
+      return "bg-green-500/20 text-green-400 border-green-500/30"
+    case "intermediate":
+      return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+    case "advanced":
+      return "bg-orange-500/20 text-orange-400 border-orange-500/30"
+    case "expert":
+      return "bg-red-500/20 text-red-400 border-red-500/30"
+    default:
+      return "bg-gray-500/20 text-gray-400 border-gray-500/30"
+  }
+}
 
-      // Add dependencies as edges
-      if (node.dependencies && node.dependencies.length > 0) {
-        node.dependencies.forEach(dep => {
-          flowEdges.push({
-            id: `e${dep._id}-${nodeId}`,
-            source: dep._id,
-            target: nodeId,
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-            },
-            style: {
-              stroke: '#94a3b8',
-              strokeDasharray: '5,5',
-              strokeWidth: 2,
-            },
-            animated: true,
-          });
-        });
-      }
+const getImportanceColor = (importance?: ImportanceLevel) => {
+  switch (importance) {
+    case "critical":
+      return "text-red-400"
+    case "high":
+      return "text-orange-400"
+    case "medium":
+      return "text-yellow-400"
+    case "low":
+      return "text-green-400"
+    default:
+      return "text-gray-400"
+  }
+}
 
-      // Add prerequisites as edges
-      if (node.prerequisites && node.prerequisites.length > 0) {
-        node.prerequisites.forEach(prereq => {
-          flowEdges.push({
-            id: `e${prereq._id}-${nodeId}`,
-            source: prereq._id,
-            target: nodeId,
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-            },
-            style: {
-              stroke: '#cbd5e1',
-              strokeWidth: 2,
-            },
-          });
-        });
-      }
+const getResourceIcon = (type: string) => {
+  switch (type) {
+    case "video":
+      return <Play className="h-4 w-4" />
+    case "course":
+      return <BookOpen className="h-4 w-4" />
+    case "article":
+      return <FileText className="h-4 w-4" />
+    case "documentation":
+      return <FileText className="h-4 w-4" />
+    default:
+      return <ExternalLink className="h-4 w-4" />
+  }
+}
 
-      // Add children recursively if expanded
-      if (isExpanded && node.children && node.children.length > 0) {
-        const childLevel = convertNodesToFlowElements(node.children, nodeId, xPos + 250, currentY);
-        flowNodes.push(...childLevel.nodes);
-        flowEdges.push(...childLevel.edges);
-        currentY += Math.max(150, childLevel.height);
-      } else {
-        currentY += 120;
-      }
-    });
-
-    return { nodes: flowNodes, edges: flowEdges, height: currentY - yPos };
-  }, [expandedNodes]);
-
-  // Initialize nodes and edges
-  const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
-  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
-
-  useEffect(() => {
-    if (roadmapNodes && roadmapNodes.length > 0) {
-      const { nodes, edges } = convertNodesToFlowElements(roadmapNodes);
-      setRfNodes(nodes);
-      setRfEdges(edges);
-    }
-  }, [roadmapNodes, convertNodesToFlowElements]);
-
-  const onConnect = useCallback(
-    (params: Connection) => setRfEdges((eds) => addEdge(params, eds)),
-    [setRfEdges]
-  );
-
-  const onInit = useCallback(() => {
-    reactFlowInstance.fitView({ padding: 0.2 });
-  }, [reactFlowInstance]);
-
-  // Fetch roadmap details
-  useEffect(() => {
-    if (!roadmapId) return;
-
-    dispatch(getRoadMapDetails(roadmapId))
-      .unwrap().then(()=>{
-        toast.success("roadmap details fetched successfully")
-      })
-      .catch((error) => {
-        toast.error(error )
-        console.error('Failed to fetch roadmap details:', error);
-      });
-  }, [roadmapId, dispatch]);
-
-  // Zoom handlers
-  const zoomIn = useCallback(() => {
-    reactFlowInstance.zoomIn();
-  }, [reactFlowInstance]);
-
-  const zoomOut = useCallback(() => {
-    reactFlowInstance.zoomOut();
-  }, [reactFlowInstance]);
-
-  const zoomFit = useCallback(() => {
-    reactFlowInstance.fitView({ padding: 0.2 });
-  }, [reactFlowInstance]);
-
-  // Toggle node expansion
-  const toggleNodeExpansion = (nodeId: string) => {
-    setExpandedNodes(prev => ({
-      ...prev,
-      [nodeId]: !prev[nodeId]
-    }));
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: 'linear' }}
-          className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"
+// Components
+const RoadmapHeader = ({ roadmap }: { roadmap: RoadmapDetails }) => (
+  <div className="relative">
+    <div className="h-64 bg-gradient-to-r from-[#0F172A] to-[#020617] rounded-lg overflow-hidden">
+      {roadmap.coverImage && (
+        <img
+          src={roadmap.coverImage.url || "/placeholder.svg"}
+          alt={roadmap.title}
+          className="w-full h-full object-cover opacity-30"
         />
-      </div>
-    );
-  }
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-transparent" />
+    </div>
 
-  if (!roadmap || !roadmapNodes) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Roadmap not found</p>
+    <div className="absolute bottom-6 left-6 right-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Badge className="bg-[#2563EB]/20 text-[#60A5FA] border-[#2563EB]/30 capitalize">{roadmap.category}</Badge>
+        {roadmap.isFeatured && (
+          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Featured</Badge>
+        )}
+        <Badge className={`border ${getDifficultyColor(roadmap.difficulty)} capitalize`}>{roadmap.difficulty}</Badge>
       </div>
-    );
-  }
+
+      <h1 className="text-4xl font-bold text-[#60A5FA] mb-2">{roadmap.title}</h1>
+      <p className="text-[#E2E8F0] text-lg max-w-3xl">{roadmap.description}</p>
+    </div>
+  </div>
+)
+
+const StatsCard = ({ stats }: { stats: RoadmapStats }) => (
+  <Card className="bg-[#1E293B] border-[#334155]">
+    <CardContent className="p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="text-center">
+          <div className="flex items-center justify-center mb-2">
+            <Eye className="h-5 w-5 text-[#2563EB]" />
+          </div>
+          <div className="text-2xl font-bold text-[#60A5FA]">{stats.views.toLocaleString()}</div>
+          <div className="text-sm text-[#E2E8F0]">Views</div>
+        </div>
+
+        <div className="text-center">
+          <div className="flex items-center justify-center mb-2">
+            <Trophy className="h-5 w-5 text-[#2563EB]" />
+          </div>
+          <div className="text-2xl font-bold text-[#60A5FA]">{stats.completions.toLocaleString()}</div>
+          <div className="text-sm text-[#E2E8F0]">Completions</div>
+        </div>
+
+        <div className="text-center">
+          <div className="flex items-center justify-center mb-2">
+            <Star className="h-5 w-5 text-[#2563EB]" />
+          </div>
+          <div className="text-2xl font-bold text-[#60A5FA]">{stats.averageRating.toFixed(1)}</div>
+          <div className="text-sm text-[#E2E8F0]">Rating</div>
+        </div>
+
+        <div className="text-center">
+          <div className="flex items-center justify-center mb-2">
+            <Users className="h-5 w-5 text-[#2563EB]" />
+          </div>
+          <div className="text-2xl font-bold text-[#60A5FA]">{stats.ratingsCount.toLocaleString()}</div>
+          <div className="text-sm text-[#E2E8F0]">Reviews</div>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+)
+
+const RoadmapInfo = ({ roadmap }: { roadmap: RoadmapDetails }) => (
+  <Card className="bg-[#1E293B] border-[#334155]">
+    <CardHeader>
+      <CardTitle className="text-[#60A5FA]">Roadmap Information</CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      {roadmap.estimatedDuration && (
+        <div className="flex items-center gap-3">
+          <Clock className="h-5 w-5 text-[#2563EB]" />
+          <span className="text-[#E2E8F0]">
+            Estimated Duration: {roadmap.estimatedDuration.value} {roadmap.estimatedDuration.unit}
+          </span>
+        </div>
+      )}
+
+      {roadmap.contributor && (
+        <div className="flex items-center gap-3">
+          <UserIcon className="h-5 w-5 text-[#2563EB]" />
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={roadmap.contributor.avatar || "/placeholder.svg"} />
+              <AvatarFallback className="bg-[#0F172A] text-[#60A5FA]">
+                {roadmap.contributor.username[0].toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-[#E2E8F0]">Created by {roadmap.contributor.username}</span>
+          </div>
+        </div>
+      )}
+
+      {roadmap.lastUpdated && (
+        <div className="flex items-center gap-3">
+          <Calendar className="h-5 w-5 text-[#2563EB]" />
+          <span className="text-[#E2E8F0]">Last updated: {roadmap.lastUpdated.toLocaleDateString()}</span>
+        </div>
+      )}
+
+      {roadmap.tags && roadmap.tags.length > 0 && (
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <Tag className="h-5 w-5 text-[#2563EB]" />
+            <span className="text-[#E2E8F0]">Tags:</span>
+          </div>
+          <div className="flex flex-wrap gap-2 ml-8">
+            {roadmap.tags.map((tag, index) => (
+              <Badge key={index} className="bg-[#0F172A] text-[#3B82F6] border-[#2563EB]/30">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {roadmap.prerequisites && roadmap.prerequisites.length > 0 && (
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <AlertCircle className="h-5 w-5 text-[#2563EB]" />
+            <span className="text-[#E2E8F0]">Prerequisites:</span>
+          </div>
+          <div className="ml-8 space-y-1">
+            {roadmap.prerequisites.map((prereq) => (
+              <div key={prereq._id} className="text-[#3B82F6] hover:text-[#60A5FA] cursor-pointer">
+                • {prereq.title}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </CardContent>
+  </Card>
+)
+
+const NodeCard = ({ node, depth = 0 }: { node: RoadmapNode; depth?: number }) => {
+  const [isExpanded, setIsExpanded] = useState(depth < 2)
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <Badge variant="secondary" className="mb-2">
-                {roadmap.category}
-              </Badge>
-              <h1 className="text-3xl font-bold tracking-tight">{roadmap.title}</h1>
-              <p className="mt-2 text-blue-100 max-w-3xl">{roadmap.description}</p>
-              
-              <div className="mt-4 flex flex-wrap gap-2">
-                {roadmap.tags?.map((tag) => (
-                  <Badge key={tag} variant="outline" className="bg-white/10 text-white border-white/20">
-                    {tag}
+    <div className={`ml-${depth * 4}`}>
+      <Card className="bg-[#1E293B] border-[#334155] mb-4">
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                {node.children && node.children.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="p-1 h-6 w-6 text-[#60A5FA] hover:bg-[#0F172A]"
+                  >
+                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </Button>
+                )}
+
+                <h3 className="text-lg font-semibold text-[#60A5FA]">{node.title}</h3>
+
+                {node.nodeType && (
+                  <Badge className="bg-[#2563EB]/20 text-[#3B82F6] border-[#2563EB]/30 capitalize text-xs">
+                    {node.nodeType}
                   </Badge>
-                ))}
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button variant="outline" className="bg-white/10 text-white hover:bg-white/20 border-white/20">
-                <Bookmark className="w-4 h-4 mr-2" /> Save
-              </Button>
-              <Button variant="outline" className="bg-white/10 text-white hover:bg-white/20 border-white/20">
-                <Share2 className="w-4 h-4 mr-2" /> Share
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+                )}
 
-      {/* Stats Bar */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-6 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Star className="w-4 h-4 text-yellow-500" />
-                <span className="font-medium">
-                  {roadmap.stats?.averageRating?.toFixed(1) || '4.5'}
-                  <span className="text-muted-foreground text-sm ml-1">({roadmap.stats?.ratingsCount || 0} reviews)</span>
-                </span>
+                {node.isOptional && (
+                  <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30 text-xs">Optional</Badge>
+                )}
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-500" />
-                <span className="font-medium">{roadmap.stats?.completions || 0} completions</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Eye className="w-4 h-4 text-purple-500" />
-                <span className="font-medium">{roadmap.stats?.views || 0} views</span>
-              </div>
-              
-              {roadmap.estimatedDuration && (
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-green-500" />
-                  <span className="font-medium">
-                    {roadmap.estimatedDuration.value} {roadmap.estimatedDuration.unit}
-                  </span>
-                </div>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {roadmap.isCommunityContributed && roadmap.contributor && (
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={roadmap.contributor.avatar} />
-                    <AvatarFallback>{roadmap.contributor.username.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm">Contributed by {roadmap.contributor.username}</span>
-                </div>
-              )}
-              {roadmap.isFeatured && (
-                <Badge variant="default" className="bg-yellow-100 text-yellow-800">
-                  <Star className="w-3 h-3 mr-1" /> Featured
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        <div className="max-w-7xl mx-auto h-full">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="rounded-none border-b bg-transparent p-0">
-              <TabsTrigger value="roadmap" className="relative">
-                <GanttChart className="w-4 h-4 mr-2" />
-                Roadmap
-              </TabsTrigger>
-              <TabsTrigger value="details">
-                <BookOpen className="w-4 h-4 mr-2" />
-                Details
-              </TabsTrigger>
-              <TabsTrigger value="resources">
-                <Layers className="w-4 h-4 mr-2" />
-                Resources
-              </TabsTrigger>
-              <TabsTrigger value="reviews">
-                <Star className="w-4 h-4 mr-2" />
-                Reviews
-              </TabsTrigger>
-              <TabsTrigger value="stats">
-                <BarChart2 className="w-4 h-4 mr-2" />
-                Stats
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="roadmap" className="flex-1 overflow-hidden">
-              <div className="h-full flex flex-col">
-                <div className="p-4 border-b flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={viewMode === 'graph' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setViewMode('graph')}
-                    >
-                      <LayoutGrid className="w-4 h-4 mr-2" />
-                      Graph View
-                    </Button>
-                    <Button
-                      variant={viewMode === 'list' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setViewMode('list')}
-                    >
-                      <List className="w-4 h-4 mr-2" />
-                      List View
-                    </Button>
+              {node.description && <p className="text-[#E2E8F0] mb-3">{node.description}</p>}
+
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                {node.estimatedDuration && (
+                  <div className="flex items-center gap-1 text-[#E2E8F0]">
+                    <Clock className="h-4 w-4 text-[#2563EB]" />
+                    {node.estimatedDuration.value} {node.estimatedDuration.unit}
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={zoomIn}>
-                            <ZoomIn className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Zoom In</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={zoomOut}>
-                            <ZoomOut className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Zoom Out</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={zoomFit}>
-                            <RotateCcw className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Reset View</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                )}
+
+                {node.metadata?.difficulty && (
+                  <Badge className={`border text-xs ${getDifficultyColor(node.metadata.difficulty)}`}>
+                    {node.metadata.difficulty}
+                  </Badge>
+                )}
+
+                {node.metadata?.importance && (
+                  <div className={`flex items-center gap-1 text-xs ${getImportanceColor(node.metadata.importance)}`}>
+                    <Circle className="h-3 w-3 fill-current" />
+                    {node.metadata.importance} priority
                   </div>
-                </div>
-                
-                <div className="flex-1 overflow-hidden">
-                  {viewMode === 'graph' ? (
-                    <ReactFlow
-                      nodes={rfNodes}
-                      edges={rfEdges}
-                      onNodesChange={onNodesChange}
-                      onEdgesChange={onEdgesChange}
-                      onConnect={onConnect}
-                      nodeTypes={nodeTypes}
-                      onInit={onInit}
-                      fitView
-                      proOptions={{ hideAttribution: true }}
-                    >
-                      <Background />
-                      <Controls />
-                      <Panel position="top-right">
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={zoomIn}>
-                            <ZoomIn className="w-4 h-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={zoomOut}>
-                            <ZoomOut className="w-4 h-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={zoomFit}>
-                            <RotateCcw className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </Panel>
-                    </ReactFlow>
-                  ) : (
-                    <ScrollArea className="h-full p-6">
-                      <div className="space-y-4">
-                        {roadmapNodes.map((node) => (
-                          <TreeNode
-                            key={node._id}
-                            node={node}
-                            level={0}
-                            expandedNodes={expandedNodes}
-                            onToggleExpand={toggleNodeExpansion}
-                            onNodeClick={(node) => {
-                              setSelectedNode(node);
-                              setDialogOpen(true);
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  )}
-                </div>
+                )}
               </div>
-            </TabsContent>
-            
-            <TabsContent value="details" className="flex-1 overflow-auto p-6">
-              <div className="max-w-3xl mx-auto">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>About This Roadmap</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">{roadmap.longDescription || roadmap.description}</p>
-                    
-                    {roadmap.prerequisites && roadmap.prerequisites.length > 0 && (
-                      <div className="mt-6">
-                        <h3 className="font-semibold mb-2 flex items-center gap-2">
-                          <Lock className="w-4 h-4" />
-                          Prerequisites
-                        </h3>
-                        <div className="space-y-2">
-                          {roadmap.prerequisites.map((prereq) => (
-                            <div key={prereq._id} className="flex items-center gap-2">
-                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                              <a href={`/roadmaps/${prereq.slug}`} className="text-blue-600 hover:underline">
-                                {prereq.title}
-                              </a>
-                            </div>
-                          ))}
-                        </div>
+
+              {node.resources && node.resources.length > 0 && (
+                <div className="mt-3">
+                  <h4 className="text-sm font-medium text-[#60A5FA] mb-2">Resources:</h4>
+                  <div className="space-y-1">
+                    {node.resources.map((resource) => (
+                      <div key={resource._id} className="flex items-center gap-2 text-sm">
+                        <span className="text-[#2563EB]">{getResourceIcon(resource.type)}</span>
+                        <a href={resource.url} className="text-[#3B82F6] hover:text-[#60A5FA] hover:underline">
+                          {resource.title}
+                        </a>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-                
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle>Roadmap Details</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-muted-foreground" />
-                          <span>
-                            <span className="font-medium">Duration:</span>{' '}
-                            {roadmap.estimatedDuration
-                              ? `${roadmap.estimatedDuration.value} ${roadmap.estimatedDuration.unit}`
-                              : 'Self-paced'}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Target className="w-4 h-4 text-muted-foreground" />
-                          <span>
-                            <span className="font-medium">Difficulty:</span>{' '}
-                            {roadmap.difficulty || 'Intermediate'}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Trophy className="w-4 h-4 text-muted-foreground" />
-                          <span>
-                            <span className="font-medium">Category:</span> {roadmap.category}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Flag className="w-4 h-4 text-muted-foreground" />
-                          <span>
-                            <span className="font-medium">Version:</span> {roadmap.version || '1.0'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="resources" className="flex-1 overflow-auto p-6">
-              <div className="max-w-3xl mx-auto">
-                <h2 className="text-2xl font-bold mb-6">All Resources</h2>
-                
-                <div className="space-y-6">
-                  {roadmapNodes.map((node) => (
-                    <div key={node._id}>
-                      <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        {node.title}
-                      </h3>
-                      
-                      {node.resources && node.resources.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {node.resources.map((resource) => (
-                            <Card key={resource._id} className="hover:shadow-md transition-shadow">
-                              <CardHeader className="pb-3">
-                                <div className="flex justify-between items-start">
-                                  <CardTitle className="text-base">{resource.title}</CardTitle>
-                                  <Badge variant="outline">{resource.resourceType}</Badge>
-                                </div>
-                                {resource.difficulty && (
-                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                    <span>Difficulty:</span>
-                                    <Badge variant="secondary" className="px-1.5 py-0.5">
-                                      {resource.difficulty}
-                                    </Badge>
-                                  </div>
-                                )}
-                              </CardHeader>
-                              <CardContent>
-                                <p className="text-sm text-muted-foreground line-clamp-2">
-                                  {resource.description || 'No description available'}
-                                </p>
-                              </CardContent>
-                              <CardFooter className="flex justify-between items-center">
-                                <Button variant="outline" size="sm" asChild>
-                                  <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="w-4 h-4 mr-2" />
-                                    Visit Resource
-                                  </a>
-                                </Button>
-                                {resource.stats?.views && (
-                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <Eye className="w-3 h-3" />
-                                    {resource.stats.views} views
-                                  </span>
-                                )}
-                              </CardFooter>
-                            </Card>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-muted-foreground text-sm">No resources for this node</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="reviews" className="flex-1 overflow-auto p-6">
-              <div className="max-w-3xl mx-auto">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">Reviews</h2>
-                  <Button>Write a Review</Button>
-                </div>
-                
-                {roadmap.reviews && roadmap.reviews.length > 0 ? (
-                  <div className="space-y-6">
-                    {roadmap.reviews.map((review) => (
-                      <Card key={review._id}>
-                        <CardHeader>
-                          <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarImage src={review.user.avatar} />
-                                <AvatarFallback>{review.user.username.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium">{review.user.username}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {new Date(review.createdAt).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Rating value={review.rating} readOnly />
-                              {review.isVerified && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <CheckCircle className="w-4 h-4 text-blue-500" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>Verified Review</TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {review.title && <h3 className="font-semibold mb-2">{review.title}</h3>}
-                          <p className="text-muted-foreground">{review.review}</p>
-                          
-                          {(review.pros || review.cons) && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                              {review.pros && review.pros.length > 0 && (
-                                <div className="bg-green-50 p-3 rounded-lg">
-                                  <h4 className="font-medium text-green-800 flex items-center gap-2 mb-2">
-                                    <ThumbsUp className="w-4 h-4" />
-                                    Pros
-                                  </h4>
-                                  <ul className="space-y-1 text-sm text-green-700">
-                                    {review.pros.map((pro, i) => (
-                                      <li key={i} className="flex items-start gap-2">
-                                        <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-green-600" />
-                                        <span>{pro}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              
-                              {review.cons && review.cons.length > 0 && (
-                                <div className="bg-red-50 p-3 rounded-lg">
-                                  <h4 className="font-medium text-red-800 flex items-center gap-2 mb-2">
-                                    <ThumbsDown className="w-4 h-4" />
-                                    Cons
-                                  </h4>
-                                  <ul className="space-y-1 text-sm text-red-700">
-                                    {review.cons.map((con, i) => (
-                                      <li key={i} className="flex items-start gap-2">
-                                        <HelpCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-red-600" />
-                                        <span>{con}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
                     ))}
                   </div>
-                ) : (
-                  <Card>
-                    <CardContent className="py-10 text-center">
-                      <Star className="w-10 h-10 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No Reviews Yet</h3>
-                      <p className="text-muted-foreground max-w-md mx-auto">
-                        Be the first to share your experience with this roadmap.
-                      </p>
-                      <Button className="mt-4">Write a Review</Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="stats" className="flex-1 overflow-auto p-6">
-              <div className="max-w-3xl mx-auto">
-                <h2 className="text-2xl font-bold mb-6">Roadmap Statistics</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Engagement</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm font-medium">Views</span>
-                            <span className="text-sm font-medium">{roadmap.stats?.views || 0}</span>
-                          </div>
-                          <Progress value={(roadmap.stats?.views || 0) / 1000 * 100} className="h-2" />
-                        </div>
-                        
-                        <div>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm font-medium">Completions</span>
-                            <span className="text-sm font-medium">{roadmap.stats?.completions || 0}</span>
-                          </div>
-                          <Progress value={(roadmap.stats?.completions || 0) / 100 * 100} className="h-2" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Ratings Distribution</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {[5, 4, 3, 2, 1].map((stars) => (
-                          <div key={stars} className="flex items-center gap-3">
-                            <div className="flex items-center w-8">
-                              <span className="text-sm text-muted-foreground">{stars}</span>
-                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            </div>
-                            <Progress value={Math.random() * 100} className="h-2 flex-1" />
-                            <span className="text-sm text-muted-foreground w-8 text-right">
-                              {Math.floor(Math.random() * 100)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
+              )}
 
-      {/* Node Details Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
-          {selectedNode && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{selectedNode.title}</DialogTitle>
-              </DialogHeader>
-              
-              <div className="space-y-4">
-                {selectedNode.description && (
-                  <p className="text-muted-foreground">{selectedNode.description}</p>
-                )}
-                
-                <div className="grid grid-cols-2 gap-4">
-                  {selectedNode.nodeType && (
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">Type</h4>
-                      <p className="capitalize">{selectedNode.nodeType}</p>
-                    </div>
-                  )}
-                  
-                  {selectedNode.difficulty && (
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">Difficulty</h4>
-                      <Badge variant="outline">{selectedNode.difficulty}</Badge>
-                    </div>
-                  )}
-                  
-                  {selectedNode.estimatedDuration && (
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">Duration</h4>
-                      <p>
-                        {selectedNode.estimatedDuration.value} {selectedNode.estimatedDuration.unit}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {selectedNode.isOptional && (
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">Optional</h4>
-                      <p>Yes</p>
-                    </div>
-                  )}
+              {node.dependencies && node.dependencies.length > 0 && (
+                <div className="mt-3">
+                  <h4 className="text-sm font-medium text-[#60A5FA] mb-1">Dependencies:</h4>
+                  <div className="text-sm text-[#E2E8F0]">
+                    {node.dependencies.map((dep, index) => (
+                      <span key={dep._id}>
+                        {index > 0 && ", "}
+                        <span className="text-[#3B82F6]">{dep.title}</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                
-                {(selectedNode.dependencies || selectedNode.prerequisites) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {selectedNode.dependencies && selectedNode.dependencies.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Dependencies</h4>
-                        <div className="space-y-2">
-                          {selectedNode.dependencies.map((dep) => (
-                            <div key={dep._id} className="flex items-center gap-2">
-                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                              <span>{dep.title}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {selectedNode.prerequisites && selectedNode.prerequisites.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Prerequisites</h4>
-                        <div className="space-y-2">
-                          {selectedNode.prerequisites.map((prereq) => (
-                            <div key={prereq._id} className="flex items-center gap-2">
-                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                              <span>{prereq.title}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {selectedNode.resources && selectedNode.resources.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-2">Resources</h4>
-                    <div className="space-y-2">
-                      {selectedNode.resources.map((resource) => (
-                        <div key={resource._id} className="p-3 border rounded-lg hover:bg-muted/50">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h5 className="font-medium">{resource.title}</h5>
-                              <p className="text-sm text-muted-foreground line-clamp-1">
-                                {resource.description}
-                              </p>
-                            </div>
-                            <Badge variant="outline">{resource.resourceType}</Badge>
-                          </div>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="mt-2 px-0 h-auto text-blue-600"
-                            asChild
-                          >
-                            <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="w-4 h-4 mr-1" />
-                              Visit Resource
-                            </a>
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
+              )}
+            </div>
 
-// TreeNode component for list view
-const TreeNode = ({
-  node,
-  level,
-  expandedNodes,
-  onToggleExpand,
-  onNodeClick,
-}: {
-  node: NodeDetails;
-  level: number;
-  expandedNodes: Record<string, boolean>;
-  onToggleExpand: (nodeId: string) => void;
-  onNodeClick: (node: NodeDetails) => void;
-}) => {
-  const hasChildren = node.children && node.children.length > 0;
-  const isExpanded = expandedNodes[node._id] ?? false;
+            <div className="flex items-center gap-2 ml-4">
+              <Button variant="ghost" size="sm" className="text-[#3B82F6] hover:text-[#60A5FA] hover:bg-[#0F172A]">
+                <CheckCircle2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-  return (
-    <div>
-      <div
-        className={cn(
-          'flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors',
-          level > 0 && 'ml-6'
-        )}
-        style={{ paddingLeft: `${level * 12}px` }}
-        onClick={() => onNodeClick(node)}
-      >
-        {hasChildren ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 rounded-full"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleExpand(node._id);
-            }}
-          >
-            {isExpanded ? (
-              <ChevronDown className="w-4 h-4" />
-            ) : (
-              <ChevronRight className="w-4 h-4" />
-            )}
-          </Button>
-        ) : (
-          <div className="w-6" />
-        )}
-        
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium truncate">{node.title}</h3>
-          {node.description && (
-            <p className="text-sm text-muted-foreground truncate">{node.description}</p>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {node.estimatedDuration && (
-            <Badge variant="outline" className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {node.estimatedDuration.value} {node.estimatedDuration.unit}
-            </Badge>
-          )}
-          
-          {node.difficulty && (
-            <Badge variant="outline">{node.difficulty}</Badge>
-          )}
-          
-          {node.isOptional && (
-            <Badge variant="secondary">Optional</Badge>
-          )}
-        </div>
-      </div>
-      
-      {isExpanded && hasChildren && (
-        <div className="space-y-1">
-          {node.children?.map((child) => (
-            <TreeNode
-              key={child._id}
-              node={child}
-              level={level + 1}
-              expandedNodes={expandedNodes}
-              onToggleExpand={onToggleExpand}
-              onNodeClick={onNodeClick}
-            />
+      {isExpanded && node.children && (
+        <div className="ml-6">
+          {node.children.map((child) => (
+            <NodeCard key={child._id} node={child} depth={depth + 1} />
           ))}
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
+const ReviewsSection = ({ reviews }: { reviews: Review[] }) => (
+  <Card className="bg-[#1E293B] border-[#334155]">
+    <CardHeader>
+      <CardTitle className="text-[#60A5FA]">Reviews</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-4">
+        {reviews.map((review) => (
+          <div key={review._id} className="border-b border-[#334155] pb-4 last:border-b-0">
+            <div className="flex items-start gap-3">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={review.user.avatar || "/placeholder.svg"} />
+                <AvatarFallback className="bg-[#0F172A] text-[#60A5FA]">
+                  {review.user.username[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
 
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium text-[#60A5FA]">{review.user.username}</span>
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${i < review.rating ? "text-yellow-400 fill-current" : "text-gray-600"}`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm text-[#E2E8F0]">{review.createdAt.toLocaleDateString()}</span>
+                </div>
 
-const RoadmapDetails = () => {
+                {review.comment && <p className="text-[#E2E8F0]">{review.comment}</p>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+)
+
+export default function RoadmapDetailsPage() {
+  const { roadmap, nodes } = mockData
+
   return (
-    <ReactFlowProvider>
-      <RoadmapDetailsInner />
-    </ReactFlowProvider>
-  );
-};
+    <div className="min-h-screen bg-gradient-to-br from-[#0F172A] to-[#020617]">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
+        <RoadmapHeader roadmap={roadmap} />
 
-export default RoadmapDetails;
+        {/* Stats */}
+        <div className="mt-8">{roadmap.stats && <StatsCard stats={roadmap.stats} />}</div>
+
+        {/* Main Content */}
+        <div className="grid lg:grid-cols-3 gap-8 mt-8">
+          {/* Left Column - Roadmap Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Long Description */}
+            {roadmap.longDescription && (
+              <Card className="bg-[#1E293B] border-[#334155]">
+                <CardHeader>
+                  <CardTitle className="text-[#60A5FA]">About This Roadmap</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-[#E2E8F0] leading-relaxed">{roadmap.longDescription}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Roadmap Nodes */}
+            <Card className="bg-[#1E293B] border-[#334155]">
+              <CardHeader>
+                <CardTitle className="text-[#60A5FA]">Learning Path</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {nodes.map((node) => (
+                    <NodeCard key={node._id} node={node} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Reviews */}
+            {roadmap.reviews && roadmap.reviews.length > 0 && <ReviewsSection reviews={roadmap.reviews} />}
+          </div>
+
+          {/* Right Column - Sidebar */}
+          <div className="space-y-6">
+            <RoadmapInfo roadmap={roadmap} />
+
+            {/* Action Buttons */}
+            <Card className="bg-[#1E293B] border-[#334155]">
+              <CardContent className="p-6 space-y-3">
+                <Button className="w-full bg-[#3B82F6] hover:bg-[#2563EB] text-white">Start Learning</Button>
+                <Button
+                  variant="outline"
+                  className="w-full border-[#334155] text-[#60A5FA] hover:bg-[#0F172A] bg-transparent"
+                >
+                  Save to Favorites
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full border-[#334155] text-[#60A5FA] hover:bg-[#0F172A] bg-transparent"
+                >
+                  Share Roadmap
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Progress Card */}
+            <Card className="bg-[#1E293B] border-[#334155]">
+              <CardHeader>
+                <CardTitle className="text-[#60A5FA]">Your Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#E2E8F0]">Completed</span>
+                    <span className="text-[#60A5FA]">3 of 12 topics</span>
+                  </div>
+                  <Progress value={25} className="h-2" />
+                  <p className="text-sm text-[#E2E8F0]">25% Complete</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

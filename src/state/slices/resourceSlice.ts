@@ -2,7 +2,7 @@ import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 import type {Resource} from '@/types/user/Resource/Resource'; 
-import { stat } from 'fs';
+
 
 
 interface ResourceState {

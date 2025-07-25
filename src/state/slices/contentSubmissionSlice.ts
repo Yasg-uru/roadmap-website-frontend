@@ -97,7 +97,7 @@ const contentSubmissionSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // CREATE
+      
       .addCase(createSubmission.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -114,7 +114,7 @@ const contentSubmissionSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // UPDATE
+      
       .addCase(
         updateSubmission.fulfilled,
         (state, action: PayloadAction<ContentSubmission>) => {
@@ -132,7 +132,7 @@ const contentSubmissionSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // DELETE
+    
       .addCase(
         deleteSubmission.fulfilled,
         (state, action: PayloadAction<string>) => {

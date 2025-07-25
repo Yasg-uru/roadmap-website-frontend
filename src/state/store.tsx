@@ -5,6 +5,7 @@ import  analyticsReducer  from './slices/analyticsSlice';
 import bookmarkReducer from './slices/bookmarkSlice'; 
 import notificationReducer from './slices/notificationSlice';
 import reviewReducer from './slices/reviewSlice';  
+import resourceReducer from './slices/resourceSlice'; 
 
 export const store = configureStore({
   reducer: {
@@ -13,7 +14,8 @@ export const store = configureStore({
     analytics: analyticsReducer, 
     bookmark: bookmarkReducer,
     notification: notificationReducer,
-    review: reviewReducer,  
+    review: reviewReducer,
+    resource: resourceReducer,   
   },
 });
 

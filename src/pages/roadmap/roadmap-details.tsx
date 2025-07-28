@@ -7,8 +7,8 @@ interface RoadmapItem {
   children?: RoadmapItem[]
 }
 
-interface FrontendRoadmapProps {
-  data: RoadmapItem[]
+interface RoadmapDetailsProps {
+  data?: RoadmapItem[]
 }
 
 const getTypeIcon = (type: string) => {
@@ -37,7 +37,7 @@ const getTypeColor = (type: string) => {
   }
 }
 
-export function FrontendRoadmap({ data }: FrontendRoadmapProps) {
+ function RoadmapDetails({ data }: RoadmapDetailsProps) {
   return (
     <div className="relative w-full min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-8 overflow-hidden">
       {/* Background pattern */}
@@ -288,3 +288,6 @@ export function FrontendRoadmap({ data }: FrontendRoadmapProps) {
     </div>
   )
 }
+
+
+export default RoadmapDetails; 

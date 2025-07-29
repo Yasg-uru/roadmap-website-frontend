@@ -7,6 +7,7 @@ import notificationReducer from './slices/notificationSlice';
 import reviewReducer from './slices/reviewSlice';  
 import resourceReducer from './slices/resourceSlice';
 import contentSubmissionReducer from './slices/contentSubmissionSlice';  
+import userProgressReducer from './slices/userProgressSlice'; 
 
 export const store = configureStore({
   reducer: {
@@ -17,7 +18,8 @@ export const store = configureStore({
     notification: notificationReducer,
     review: reviewReducer,
     resource: resourceReducer,
-    contentSubmission: contentSubmissionReducer,    
+    contentSubmission: contentSubmissionReducer, 
+    userProgress: userProgressReducer,    
   },
 });
 

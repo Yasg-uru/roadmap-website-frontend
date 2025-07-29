@@ -1,154 +1,322 @@
-import React, { useEffect } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import type { RootState, AppDispatch } from "@/state/store";
+
+
+
+
+import { useEffect } from "react"
+import { useSelector, useDispatch } from "react-redux"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { ArrowRight } from "lucide-react"
+import type { RootState, AppDispatch } from "@/state/store"
+
 import {
   fetchAllAnalytics,
   fetchAnalyticsByDate,
   deleteAnalytics,
-} from "@/state/slices/analyticsSlice";
+} from "@/state/slices/analyticsSlice"
 
-const Analytics: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
+import { fetchBookmarks } from "@/state/slices/bookmarkSlice"
+
+// NEW IMPORTS for user progress
+import {
+  fetchUserProgress,
+ 
+} from "@/state/slices/userProgressSlice"
+
+interface ProgressCircleProps {
+  percentage: number
+  current: number
+  total: number
+  title: string
+}
+
+function ProgressCircle({ percentage, current, total, title }: ProgressCircleProps) {
+  const circumference = 2 * Math.PI * 45
+  const strokeDasharray = circumference
+  const strokeDashoffset = circumference - (percentage / 100) * circumference
+
+  return (
+    <Card className="bg-slate-900/50 border-slate-700/50 p-6">
+      <div className="flex flex-col items-center space-y-4">
+        <div className="relative w-32 h-32">
+          <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" stroke="rgb(30 41 59)" strokeWidth="8" fill="none" />
+            <circle
+              cx="50"
+              cy="50"
+              r="45"
+              stroke="rgb(6 182 212)"
+              strokeWidth="8"
+              fill="none"
+              strokeDasharray={strokeDasharray}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              className="transition-all duration-300 ease-in-out"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-3xl font-bold text-white">{percentage}%</span>
+            <span className="text-sm text-slate-400">
+              {current} / {total}
+            </span>
+          </div>
+        </div>
+        <h3 className="text-lg font-semibold text-white text-center">{title}</h3>
+        <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-800 bg-transparent">
+          Resume
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+export default function CombinedAnalytics() {
+  const dispatch = useDispatch<AppDispatch>()
 
   const {
     analyticsList,
     selectedAnalytics,
     isLoading,
     error,
-  } = useSelector((state: RootState) => state.analytics);
+  } = useSelector((state: RootState) => state.analytics)
 
-  const currentUser = useSelector((state: RootState) => state.auth.user); // Optional, if filtering by user
+  const bookmarkedResources = useSelector((state: RootState) => state.bookmark.bookmarks)
+  const currentUser = useSelector((state: RootState) => state.auth.user)
+
+  // USER PROGRESS state
+  const {
+    progress,
+    loading: progressLoading,
+    error: progressError,
+  } = useSelector((state: RootState) => state.userProgress)
 
   useEffect(() => {
-    dispatch(fetchAllAnalytics());
-  }, [dispatch]);
+    dispatch(fetchAllAnalytics())
+    if (currentUser?._id) {
+      dispatch(fetchBookmarks(currentUser._id))
+
+      // Fetch user progress for first roadmap of selectedAnalytics or first roadmap in analyticsList
+      const roadmapId =
+        selectedAnalytics?.roadmaps?.topViewed?.[0]?.roadmap ||
+        analyticsList?.[0]?.roadmaps?.topViewed?.[0]?.roadmap ||
+        ""
+
+      if (roadmapId) {
+        dispatch(fetchUserProgress({ userId: currentUser._id, roadmapId }))
+      }
+    }
+  }, [dispatch, currentUser, selectedAnalytics, analyticsList])
 
   const handleFetchByDate = (date: string) => {
-    dispatch(fetchAnalyticsByDate(date));
-  };
+    dispatch(fetchAnalyticsByDate(date))
+  }
 
   const handleDelete = (date: string) => {
-    dispatch(deleteAnalytics(date));
-  };
+    dispatch(deleteAnalytics(date))
+  }
 
-  // Optional: filter analytics by logged-in user
-  const filteredAnalytics = analyticsList.filter(
-    (item: any) => !item._id || item._id === currentUser?._id // adjust key if needed
-  );
+  const filteredAnalytics = analyticsList.filter((item: any) =>
+    !item._id || item._id === currentUser?._id
+  )
+
+  
+
+  
+  const progressData = progress
+    ? [
+        {
+          title: "Roadmap Progress",
+          current: progress.nodes.filter((n) => n.status === "completed").length,
+          total: progress.nodes.length,
+          percentage:
+            progress.nodes.length > 0
+              ? Math.round(
+                  (progress.nodes.filter((n) => n.status === "completed").length / progress.nodes.length) *
+                    100
+                )
+              : 0,
+        },
+      ]
+    :  []
+
+  // Use source for analytics details
+  
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>📊 Analytics Dashboard</h1>
+    <div className="min-h-screen bg-slate-950 p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Progress Circles */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {progressLoading && <p className="text-white">Loading progress...</p>}
+          {progressError && <p className="text-red-500">Error loading progress: {progressError}</p>}
 
-      {isLoading && <p>Loading analytics...</p>}
-      {error && <p style={{ color: "red" }}>Error: {error}</p>}
+          {progressData.length === 0 && !progressLoading && (
+            <p className="text-slate-400">No progress data available.</p>
+          )}
 
-      <p>Showing real-time analytics data based on user activity.</p>
-
-      <h2>All Analytics Records</h2>
-      {filteredAnalytics.length === 0 && <p>No analytics data found.</p>}
-
-      {filteredAnalytics.map((item:any) => (
-        <div
-          key={item.date}
-          style={{ border: "1px solid #ccc", padding: "10px", margin: "10px 0" }}
-        >
-          <p><strong>Date:</strong> {item.date}</p>
-          <p><strong>Total Users:</strong> {item.users.total}</p>
-          <p><strong>Roadmap Views:</strong> {item.roadmaps.views}</p>
-          <p><strong>Resource Clicks:</strong> {item.resources.clicks}</p>
-          <button onClick={() => handleFetchByDate(item.date)}>View Details</button>
-          <button
-            onClick={() => handleDelete(item.date)}
-            style={{ marginLeft: "10px", color: "red" }}
-          >
-            Delete
-          </button>
+          {progressData.map((data: any, idx: number) => (
+            <ProgressCircle key={idx} {...data} />
+          ))}
         </div>
-      ))}
 
-      {selectedAnalytics && (
-        <div
-          style={{
-            marginTop: "40px",
-            padding: "20px",
-            border: "2px solid #333",
-            background: "#f9f9f9",
-          }}
-        >
-          <h2>📅 Selected Analytics — {selectedAnalytics.date}</h2>
+        {/* Bookmarked Resources and Steps */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Bookmarked Roadmaps */}
+          <Card className="lg:col-span-2 bg-slate-900/50 border-slate-700/50">
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-white">Bookmarked Roadmaps</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {bookmarkedResources.length === 0 ? (
+                <p className="text-slate-400 text-sm">No bookmarks found.</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-4 gap-4 text-sm font-medium text-slate-400 border-b border-slate-700 pb-2">
+                    <span>Favorite</span>
+                    <span>Roadmap</span>
+                    <span>Tags</span>
+                    <span>Note</span>
+                  </div>
 
-          <h3>👥 Users</h3>
-          <ul>
-            <li>Total: {selectedAnalytics.users.total}</li>
-            <li>New: {selectedAnalytics.users.new}</li>
-            <li>Active: {selectedAnalytics.users.active}</li>
-          </ul>
+                  {bookmarkedResources.map((bookmark: any, idx: any) => (
+                    <div key={idx} className="grid grid-cols-4 gap-4 items-center py-2">
+                      <Badge
+                        className={`w-fit ${
+                          bookmark.isFavorite ? "bg-yellow-500 text-black" : "bg-slate-700 text-white"
+                        }`}
+                      >
+                        {bookmark.isFavorite ? "★" : "–"}
+                      </Badge>
+                      <div className="text-white font-medium">{bookmark.roadmap}</div>
+                      <div className="text-slate-300 text-sm">{(bookmark.tags || []).join(", ") || "—"}</div>
+                      <div className="text-slate-400 text-sm italic truncate">{bookmark.notes || "No notes"}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          <h3>📈 Roadmaps</h3>
-          <p>Views: {selectedAnalytics.roadmaps.views}</p>
-          <p>Top Viewed:</p>
-          <ul>
-            {selectedAnalytics.roadmaps.topViewed.map((item: any) => (
-              <li key={item.roadmap}>
-                {item.roadmap} - {item.views} views
-              </li>
-            ))}
-          </ul>
-          <p>Top Completed:</p>
-          <ul>
-            {selectedAnalytics.roadmaps.topCompleted.map((item: any) => (
-              <li key={item.roadmap}>
-                {item.roadmap} - {item.completions} completions
-              </li>
-            ))}
-          </ul>
-
-          <h3>📚 Resources</h3>
-          <p>Clicks: {selectedAnalytics.resources.clicks}</p>
-          <ul>
-            {selectedAnalytics.resources.topClicked.map((res: any) => (
-              <li key={res.resource}>
-                {res.resource} - {res.clicks} clicks
-              </li>
-            ))}
-          </ul>
-
-          <h3>📊 Engagement</h3>
-          <ul>
-            <li>Avg. Session Duration: {selectedAnalytics.engagement.averageSessionDuration}s</li>
-            <li>Pages/Session: {selectedAnalytics.engagement.pagesPerSession}</li>
-            <li>Bounce Rate: {selectedAnalytics.engagement.bounceRate}%</li>
-          </ul>
-
-          <h3>💻 Devices</h3>
-          <ul>
-            <li>Desktop: {selectedAnalytics.devices.desktop}%</li>
-            <li>Mobile: {selectedAnalytics.devices.mobile}%</li>
-            <li>Tablet: {selectedAnalytics.devices.tablet}%</li>
-          </ul>
-
-          <h3>🌍 Locations</h3>
-          <ul>
-            {selectedAnalytics.locations.map((loc: any, index:any) => (
-              <li key={index}>
-                {loc.country || "Unknown"} - {loc.users} users
-              </li>
-            ))}
-          </ul>
-
-          <h3>🔗 Referrers</h3>
-          <ul>
-            {selectedAnalytics.referrers.map((ref:any, index:any) => (
-              <li key={index}>
-                {ref.source || "Direct"} - {ref.count}
-              </li>
-            ))}
-          </ul>
+          {/* Placeholder Panels (you can fetch dynamic data later) */}
+          <div className="space-y-6">
+            <Card className="bg-slate-900/50 border-slate-700/50">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold text-white">Recently Viewed</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-3">
+                  <ArrowRight className="text-cyan-400 w-5 h-5" />
+                  <div>
+                    <div className="text-white font-medium">Supervised Learning</div>
+                    <div className="text-slate-400 text-sm">Machine Learning</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      )}
+
+        {/* Analytics Records Section */}
+        <Card className="bg-slate-900/50 border-slate-700/50">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-white">Analytics Records</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading && <p className="text-slate-400">Loading analytics...</p>}
+            {error && <p className="text-red-500">Error: {error}</p>}
+            {filteredAnalytics.length === 0 && <p className="text-slate-400">No analytics data found.</p>}
+            <div className="space-y-4">
+              {filteredAnalytics.map((item: any) => (
+                <div key={item.date} className="border border-slate-700 p-4 rounded-md">
+                  <p className="text-white">
+                    <strong>Date:</strong> {item.date}
+                  </p>
+                  <p className="text-slate-400">Users: {item.users.total}</p>
+                  <p className="text-slate-400">Roadmaps Views: {item.roadmaps.views}</p>
+                  <p className="text-slate-400">Resource Clicks: {item.resources.clicks}</p>
+                  <div className="space-x-2 mt-2">
+                    <Button onClick={() => handleFetchByDate(item.date)}>View Details</Button>
+                    <Button variant="destructive" onClick={() => handleDelete(item.date)}>
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Selected Analytics Details */}
+        {selectedAnalytics && (
+          <Card className="bg-slate-900/50 border-slate-700/50">
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-white">
+                Selected Analytics: {selectedAnalytics.date}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-slate-300 space-y-4 text-sm">
+              <div>
+                <h3 className="text-white font-semibold">👥 Users</h3>
+                <ul>
+                  <li>Total: {selectedAnalytics.users.total}</li>
+                  <li>New: {selectedAnalytics.users.new}</li>
+                  <li>Active: {selectedAnalytics.users.active}</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">📈 Roadmaps</h3>
+                <ul>
+                  {selectedAnalytics.roadmaps.topViewed.map((r: any) => (
+                    <li key={r.roadmap}>
+                      {r.roadmap} – {r.views} views
+                    </li>
+                  ))}
+                  {selectedAnalytics.roadmaps.topCompleted.map((r: any) => (
+                    <li key={r.roadmap}>
+                      {r.roadmap} – {r.completions} completions
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">📚 Resources</h3>
+                <ul>
+                  {selectedAnalytics.resources.topClicked.map((r: any) => (
+                    <li key={r.resource}>
+                      {r.resource} – {r.clicks} clicks
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">💻 Devices</h3>
+                <ul>
+                  <li>Desktop: {selectedAnalytics.devices.desktop}%</li>
+                  <li>Mobile: {selectedAnalytics.devices.mobile}%</li>
+                  <li>Tablet: {selectedAnalytics.devices.tablet}%</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">🌍 Locations</h3>
+                <ul>
+                  {(selectedAnalytics.locations || []).map((loc: any, i: number) => (
+                    <li key={i}>{loc.country || "Unknown"} – {loc.users} users</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">🔗 Referrers</h3>
+                <ul>
+                  {(selectedAnalytics.referrers || []).map((ref: any, i: number) => (
+                    <li key={i}>{ref.source || "Direct"} – {ref.count}</li>
+                  ))}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
-  );
-};
-
-export default Analytics;
+  )
+}

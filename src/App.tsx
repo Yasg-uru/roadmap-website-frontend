@@ -14,6 +14,7 @@ import { useEffect } from "react"
 import { socket } from "./helper/useSocket"
 import { useAuth } from "./contexts/authContext"
 import GenerateRoadmap from "./pages/roadmap-generation/generate-roadmap"
+import RoadmapDetailsPage from "./pages/roadmap/getroadmapdetails-page"
 
 function App() {
   const {user}= useAuth()
@@ -35,7 +36,7 @@ socket.emit("registerUser" , user?._id);
     <Route path="/reset-password/:token" element={<ResetPassword/>}/>
 
     <Route path="/roadmaps" element={<Roadmaps/>}/>
-    <Route path="/details/:roadmapId"  element={<RoadmapDetails />}/>
+    <Route path="/details/:roadmapId"  element={<RoadmapDetailsPage />}/>
   <Route path="/generate-roadmap" element= {<GenerateRoadmap/>} />
    </Routes>
    </>

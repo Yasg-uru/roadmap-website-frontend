@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,218 +23,12 @@ import {
   Circle,
   AlertCircle,
 } from "lucide-react"
+import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch"
+import type { ImportanceLevel, NodeDifficulty, Review, RoadmapDetails, RoadmapDifficulty, RoadmapNode, RoadmapStats } from "@/types/user/roadmap/roadmap-details"
+import { getRoadMapDetails } from "@/state/slices/roadmapSlice"
+import { useParams } from "react-router-dom"
 
-// Types (as provided)
-type DurationUnit = "hours" | "days" | "weeks" | "months"
-type RoadmapCategory =
-  | "frontend"
-  | "backend"
-  | "devops"
-  | "mobile"
-  | "data-science"
-  | "design"
-  | "product-management"
-  | "cyber-security"
-  | "cloud"
-  | "blockchain"
-  | "other"
-type RoadmapDifficulty = "beginner" | "intermediate" | "advanced" | "expert"
-type NodeType = "topic" | "skill" | "milestone" | "project" | "checkpoint"
-type ImportanceLevel = "low" | "medium" | "high" | "critical"
-type NodeDifficulty = "beginner" | "intermediate" | "advanced"
 
-interface RoadmapUser {
-  _id: string
-  username: string
-  avatar?: string
-}
-
-interface Review {
-  _id: string
-  user: RoadmapUser
-  rating: number
-  comment?: string
-  createdAt: Date
-}
-
-interface Resource {
-  _id: string
-  title: string
-  url: string
-  type: "article" | "video" | "course" | "documentation" | "other"
-}
-
-interface RoadmapStats {
-  views: number
-  completions: number
-  averageRating: number
-  ratingsCount: number
-}
-
-interface RoadmapNode {
-  _id: string
-  title: string
-  description?: string
-  depth: number
-  position: number
-  nodeType?: NodeType
-  isOptional?: boolean
-  estimatedDuration?: {
-    value: number
-    unit: "hours" | "days" | "weeks"
-  }
-  resources?: Resource[]
-  dependencies?: Array<{ _id: string; title: string }>
-  prerequisites?: Array<{ _id: string; title: string }>
-  metadata?: {
-    keywords?: string[]
-    difficulty?: NodeDifficulty
-    importance?: ImportanceLevel
-  }
-  children?: RoadmapNode[]
-}
-
-interface RoadmapDetails {
-  _id: string
-  title: string
-  slug?: string
-  description: string
-  longDescription?: string
-  category: RoadmapCategory
-  difficulty?: RoadmapDifficulty
-  estimatedDuration?: {
-    value: number
-    unit: DurationUnit
-  }
-  coverImage?: {
-    public_id: string
-    url: string
-  }
-  isFeatured?: boolean
-  isCommunityContributed?: boolean
-  contributor?: RoadmapUser
-  tags?: string[]
-  prerequisites?: Array<{ _id: string; title: string }>
-  stats?: RoadmapStats
-  version?: number
-  isPublished?: boolean
-  publishedAt?: Date
-  lastUpdated?: Date
-  updatedBy?: RoadmapUser
-  reviews?: Review[]
-}
-
-interface RoadmapDetailsResponse {
-  roadmap: RoadmapDetails
-  nodes: RoadmapNode[]
-}
-
-// Mock data
-const mockData: RoadmapDetailsResponse = {
-  roadmap: {
-    _id: "1",
-    title: "Full Stack Web Development",
-    slug: "full-stack-web-development",
-    description: "Complete roadmap to become a full-stack web developer",
-    longDescription:
-      "This comprehensive roadmap will guide you through everything you need to know to become a proficient full-stack web developer. From frontend technologies like React and Vue.js to backend frameworks like Node.js and databases, this roadmap covers it all.",
-    category: "frontend",
-    difficulty: "intermediate",
-    estimatedDuration: { value: 6, unit: "months" },
-    coverImage: {
-      public_id: "roadmap_cover",
-      url: "/placeholder.svg?height=300&width=600",
-    },
-    isFeatured: true,
-    isCommunityContributed: false,
-    contributor: {
-      _id: "user1",
-      username: "techguru",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    tags: ["javascript", "react", "nodejs", "mongodb", "fullstack"],
-    prerequisites: [
-      { _id: "prereq1", title: "Basic HTML & CSS" },
-      { _id: "prereq2", title: "JavaScript Fundamentals" },
-    ],
-    stats: {
-      views: 15420,
-      completions: 2340,
-      averageRating: 4.7,
-      ratingsCount: 892,
-    },
-    version: 2,
-    isPublished: true,
-    publishedAt: new Date("2024-01-15"),
-    lastUpdated: new Date("2024-12-01"),
-    reviews: [
-      {
-        _id: "review1",
-        user: { _id: "user2", username: "devlearner", avatar: "/placeholder.svg?height=32&width=32" },
-        rating: 5,
-        comment: "Excellent roadmap! Very comprehensive and well-structured.",
-        createdAt: new Date("2024-11-20"),
-      },
-      {
-        _id: "review2",
-        user: { _id: "user3", username: "codingpro", avatar: "/placeholder.svg?height=32&width=32" },
-        rating: 4,
-        comment: "Great content, helped me land my first full-stack role!",
-        createdAt: new Date("2024-11-15"),
-      },
-    ],
-  },
-  nodes: [
-    {
-      _id: "node1",
-      title: "Frontend Fundamentals",
-      description: "Master the basics of frontend development",
-      depth: 0,
-      position: 0,
-      nodeType: "milestone",
-      estimatedDuration: { value: 4, unit: "weeks" },
-      metadata: { difficulty: "beginner", importance: "critical" },
-      resources: [
-        { _id: "res1", title: "HTML & CSS Crash Course", url: "#", type: "video" },
-        { _id: "res2", title: "JavaScript Fundamentals", url: "#", type: "course" },
-      ],
-      children: [
-        {
-          _id: "node1-1",
-          title: "HTML & CSS Mastery",
-          description: "Learn semantic HTML and modern CSS",
-          depth: 1,
-          position: 0,
-          nodeType: "topic",
-          estimatedDuration: { value: 2, unit: "weeks" },
-          metadata: { difficulty: "beginner", importance: "high" },
-          resources: [{ _id: "res3", title: "MDN HTML Guide", url: "#", type: "documentation" }],
-        },
-        {
-          _id: "node1-2",
-          title: "JavaScript ES6+",
-          description: "Modern JavaScript features and concepts",
-          depth: 1,
-          position: 1,
-          nodeType: "topic",
-          estimatedDuration: { value: 2, unit: "weeks" },
-          metadata: { difficulty: "intermediate", importance: "critical" },
-        },
-      ],
-    },
-    {
-      _id: "node2",
-      title: "React Development",
-      description: "Build modern UIs with React",
-      depth: 0,
-      position: 1,
-      nodeType: "skill",
-      estimatedDuration: { value: 6, unit: "weeks" },
-      metadata: { difficulty: "intermediate", importance: "high" },
-      dependencies: [{ _id: "node1", title: "Frontend Fundamentals" }],
-    },
-  ],
-}
 
 // Helper functions
 const getDifficultyColor = (difficulty?: RoadmapDifficulty | NodeDifficulty) => {
@@ -384,7 +178,7 @@ const RoadmapInfo = ({ roadmap }: { roadmap: RoadmapDetails }) => (
       {roadmap.lastUpdated && (
         <div className="flex items-center gap-3">
           <Calendar className="h-5 w-5 text-[#2563EB]" />
-          <span className="text-[#E2E8F0]">Last updated: {roadmap.lastUpdated.toLocaleDateString()}</span>
+          <span className="text-[#E2E8F0]">Last updated: {roadmap.lastUpdated.toLocaleString()}</span>
         </div>
       )}
 
@@ -574,7 +368,17 @@ const ReviewsSection = ({ reviews }: { reviews: Review[] }) => (
 )
 
 export default function RoadmapDetailsPage() {
-  const { roadmap, nodes } = mockData
+  const { roadmapId } = useParams<{ roadmapId: string }>();
+ 
+  const dispatch = useAppDispatch();
+  const {roadmap:RoadmapDetails} = useAppSelector((state)=>state.roadmap);
+  useEffect(()=>{if(roadmapId)dispatch(getRoadMapDetails(roadmapId))},[roadmapId])
+if(!RoadmapDetails){
+  return null;
+
+}
+const nodes = RoadmapDetails.nodes || [];
+const roadmap = RoadmapDetails.roadmap || {};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0F172A] to-[#020617]">

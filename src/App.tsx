@@ -15,6 +15,7 @@ import { socket } from "./helper/useSocket"
 import { useAuth } from "./contexts/authContext"
 import GenerateRoadmap from "./pages/roadmap-generation/generate-roadmap"
 import RoadmapDetailsPage from "./pages/roadmap/getroadmapdetails-page"
+import Analytics from './pages/Analytics/Analytics'
 
 function App() {
   const { user } = useAuth()
@@ -24,22 +25,22 @@ function App() {
   }, [])
   return (
     <>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/roadmap" element={<Roadmap />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/verify/:email" element={<Verify />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+    <Navbar/>
+   <Routes>
+    <Route path="/" element={<Home/>} />
+    <Route path="/roadmap" element={<Roadmap/>}/>
+    <Route path="/signup" element={<Signup/>}/>
+    <Route path = "/verify/:email"  element={<Verify/>}/>
+    <Route path="/login" element={<Login/>}/>
+    <Route path="/forgot-password" element={<ForgotPassword/>}/>
+     
+    <Route path="/reset-password/:token" element={<ResetPassword/>}/>
 
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
-
-        <Route path="/roadmaps" element={<Roadmaps />} />
-        <Route path="/details/:roadmapId" element={<RoadmapDetailsPage />} />
-        <Route path="/generate-roadmap" element={<GenerateRoadmap />} />
-      </Routes>
-    </>
+    <Route path="/roadmaps" element={<Roadmaps/>}/>
+    <Route path="/details/:roadmapId"  element={<RoadmapDetailsPage />}/>
+  <Route path="/generate-roadmap" element= {<GenerateRoadmap/>} />
+   </Routes>
+   </>
   )
 }
 

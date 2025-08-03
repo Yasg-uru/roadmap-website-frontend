@@ -22,7 +22,8 @@ export const fetchUserProgress = createAsyncThunk<
   UserProgress,
   { userId: string; roadmapId: string },
   { rejectValue: string }
->("userProgress/fetchUserProgress", async ({ userId, roadmapId }, thunkAPI) => {
+>("userProgress/fetchUserProgress",
+   async ({ userId, roadmapId }, thunkAPI) => {
   try {
     const response = await axios.get(`/api/progress/user/${userId}/roadmap/${roadmapId}`);
     return response.data as UserProgress;

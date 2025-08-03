@@ -1,7 +1,3 @@
-
-
-
-
 import { useEffect } from "react"
 import { useSelector, useDispatch } from "react-redux"
 import { Button } from "@/components/ui/button"
@@ -15,14 +11,8 @@ import {
   fetchAnalyticsByDate,
   deleteAnalytics,
 } from "@/state/slices/analyticsSlice"
-
 import { fetchBookmarks } from "@/state/slices/bookmarkSlice"
-
-// NEW IMPORTS for user progress
-import {
-  fetchUserProgress,
- 
-} from "@/state/slices/userProgressSlice"
+import { fetchUserProgress } from "@/state/slices/userProgressSlice"
 
 interface ProgressCircleProps {
   percentage: number
@@ -57,9 +47,7 @@ function ProgressCircle({ percentage, current, total, title }: ProgressCirclePro
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-3xl font-bold text-white">{percentage}%</span>
-            <span className="text-sm text-slate-400">
-              {current} / {total}
-            </span>
+            <span className="text-sm text-slate-400">{current} / {total}</span>
           </div>
         </div>
         <h3 className="text-lg font-semibold text-white text-center">{title}</h3>
@@ -74,55 +62,37 @@ function ProgressCircle({ percentage, current, total, title }: ProgressCirclePro
 export default function CombinedAnalytics() {
   const dispatch = useDispatch<AppDispatch>()
 
-  const {
-    analyticsList,
-    selectedAnalytics,
-    isLoading,
-    error,
-  } = useSelector((state: RootState) => state.analytics)
-
+  const { analyticsList, selectedAnalytics, isLoading, error } = useSelector((state: RootState) => state.analytics)
   const bookmarkedResources = useSelector((state: RootState) => state.bookmark.bookmarks)
   const currentUser = useSelector((state: RootState) => state.auth.user)
+  const { progress, loading: progressLoading, error: progressError } = useSelector((state: RootState) => state.userProgress)
 
-  // USER PROGRESS state
-  const {
-    progress,
-    loading: progressLoading,
-    error: progressError,
-  } = useSelector((state: RootState) => state.userProgress)
-
+  // Initial data fetch
   useEffect(() => {
     dispatch(fetchAllAnalytics())
     if (currentUser?._id) {
       dispatch(fetchBookmarks(currentUser._id))
-
-      // Fetch user progress for first roadmap of selectedAnalytics or first roadmap in analyticsList
-      const roadmapId =
-        selectedAnalytics?.roadmaps?.topViewed?.[0]?.roadmap ||
-        analyticsList?.[0]?.roadmaps?.topViewed?.[0]?.roadmap ||
-        ""
-
-      if (roadmapId) {
-        dispatch(fetchUserProgress({ userId: currentUser._id, roadmapId }))
-      }
     }
-  }, [dispatch, currentUser, selectedAnalytics, analyticsList])
+  }, [dispatch, currentUser?._id])
 
-  const handleFetchByDate = (date: string) => {
-    dispatch(fetchAnalyticsByDate(date))
-  }
+  // Fetch user progress based on top viewed roadmap
+  useEffect(() => {
+    if (!currentUser?._id) return
 
-  const handleDelete = (date: string) => {
-    dispatch(deleteAnalytics(date))
-  }
+    const roadmapId =
+      selectedAnalytics?.roadmaps?.topViewed?.[0]?.roadmap ||
+      analyticsList?.[0]?.roadmaps?.topViewed?.[0]?.roadmap
 
-  const filteredAnalytics = analyticsList.filter((item: any) =>
-    !item._id || item._id === currentUser?._id
-  )
+    if (roadmapId) {
+      dispatch(fetchUserProgress({ userId: currentUser._id, roadmapId }))
+    }
+  }, [dispatch, currentUser?._id, selectedAnalytics, analyticsList])
 
-  
+  const handleFetchByDate = (date: string) => dispatch(fetchAnalyticsByDate(date))
+  const handleDelete = (date: string) => dispatch(deleteAnalytics(date))
 
-  
+  const filteredAnalytics = analyticsList.filter((item: any) => !item._id || item._id === currentUser?._id)
+
   const progressData = progress
     ? [
         {
@@ -138,10 +108,7 @@ export default function CombinedAnalytics() {
               : 0,
         },
       ]
-    :  []
-
-  // Use source for analytics details
-  
+    : []
 
   return (
     <div className="min-h-screen bg-slate-950 p-6">
@@ -150,19 +117,14 @@ export default function CombinedAnalytics() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {progressLoading && <p className="text-white">Loading progress...</p>}
           {progressError && <p className="text-red-500">Error loading progress: {progressError}</p>}
-
           {progressData.length === 0 && !progressLoading && (
             <p className="text-slate-400">No progress data available.</p>
           )}
-
-          {progressData.map((data: any, idx: number) => (
-            <ProgressCircle key={idx} {...data} />
-          ))}
+          {progressData.map((data, idx) => <ProgressCircle key={idx} {...data} />)}
         </div>
 
-        {/* Bookmarked Resources and Steps */}
+        {/* Bookmarked Roadmaps */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Bookmarked Roadmaps */}
           <Card className="lg:col-span-2 bg-slate-900/50 border-slate-700/50">
             <CardHeader>
               <CardTitle className="text-xl font-semibold text-white">Bookmarked Roadmaps</CardTitle>
@@ -178,13 +140,10 @@ export default function CombinedAnalytics() {
                     <span>Tags</span>
                     <span>Note</span>
                   </div>
-
-                  {bookmarkedResources.map((bookmark: any, idx: any) => (
+                  {bookmarkedResources.map((bookmark: any, idx: number) => (
                     <div key={idx} className="grid grid-cols-4 gap-4 items-center py-2">
                       <Badge
-                        className={`w-fit ${
-                          bookmark.isFavorite ? "bg-yellow-500 text-black" : "bg-slate-700 text-white"
-                        }`}
+                        className={`w-fit ${bookmark.isFavorite ? "bg-yellow-500 text-black" : "bg-slate-700 text-white"}`}
                       >
                         {bookmark.isFavorite ? "★" : "–"}
                       </Badge>
@@ -198,7 +157,7 @@ export default function CombinedAnalytics() {
             </CardContent>
           </Card>
 
-          {/* Placeholder Panels (you can fetch dynamic data later) */}
+          {/* Recently Viewed Placeholder */}
           <div className="space-y-6">
             <Card className="bg-slate-900/50 border-slate-700/50">
               <CardHeader>
@@ -217,7 +176,7 @@ export default function CombinedAnalytics() {
           </div>
         </div>
 
-        {/* Analytics Records Section */}
+        {/* Analytics Records */}
         <Card className="bg-slate-900/50 border-slate-700/50">
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-white">Analytics Records</CardTitle>
@@ -229,17 +188,13 @@ export default function CombinedAnalytics() {
             <div className="space-y-4">
               {filteredAnalytics.map((item: any) => (
                 <div key={item.date} className="border border-slate-700 p-4 rounded-md">
-                  <p className="text-white">
-                    <strong>Date:</strong> {item.date}
-                  </p>
+                  <p className="text-white"><strong>Date:</strong> {item.date}</p>
                   <p className="text-slate-400">Users: {item.users.total}</p>
                   <p className="text-slate-400">Roadmaps Views: {item.roadmaps.views}</p>
                   <p className="text-slate-400">Resource Clicks: {item.resources.clicks}</p>
                   <div className="space-x-2 mt-2">
                     <Button onClick={() => handleFetchByDate(item.date)}>View Details</Button>
-                    <Button variant="destructive" onClick={() => handleDelete(item.date)}>
-                      Delete
-                    </Button>
+                    <Button variant="destructive" onClick={() => handleDelete(item.date)}>Delete</Button>
                   </div>
                 </div>
               ))}
@@ -247,15 +202,14 @@ export default function CombinedAnalytics() {
           </CardContent>
         </Card>
 
-        {/* Selected Analytics Details */}
+        {/* Selected Analytics */}
         {selectedAnalytics && (
           <Card className="bg-slate-900/50 border-slate-700/50">
             <CardHeader>
-              <CardTitle className="text-xl font-semibold text-white">
-                Selected Analytics: {selectedAnalytics.date}
-              </CardTitle>
+              <CardTitle className="text-xl font-semibold text-white">Selected Analytics: {selectedAnalytics.date}</CardTitle>
             </CardHeader>
             <CardContent className="text-slate-300 space-y-4 text-sm">
+              {/* Users */}
               <div>
                 <h3 className="text-white font-semibold">👥 Users</h3>
                 <ul>
@@ -264,31 +218,28 @@ export default function CombinedAnalytics() {
                   <li>Active: {selectedAnalytics.users.active}</li>
                 </ul>
               </div>
+              {/* Roadmaps */}
               <div>
                 <h3 className="text-white font-semibold">📈 Roadmaps</h3>
                 <ul>
                   {selectedAnalytics.roadmaps.topViewed.map((r: any) => (
-                    <li key={r.roadmap}>
-                      {r.roadmap} – {r.views} views
-                    </li>
+                    <li key={r.roadmap}>{r.roadmap} – {r.views} views</li>
                   ))}
                   {selectedAnalytics.roadmaps.topCompleted.map((r: any) => (
-                    <li key={r.roadmap}>
-                      {r.roadmap} – {r.completions} completions
-                    </li>
+                    <li key={r.roadmap}>{r.roadmap} – {r.completions} completions</li>
                   ))}
                 </ul>
               </div>
+              {/* Resources */}
               <div>
                 <h3 className="text-white font-semibold">📚 Resources</h3>
                 <ul>
                   {selectedAnalytics.resources.topClicked.map((r: any) => (
-                    <li key={r.resource}>
-                      {r.resource} – {r.clicks} clicks
-                    </li>
+                    <li key={r.resource}>{r.resource} – {r.clicks} clicks</li>
                   ))}
                 </ul>
               </div>
+              {/* Devices */}
               <div>
                 <h3 className="text-white font-semibold">💻 Devices</h3>
                 <ul>
@@ -297,6 +248,7 @@ export default function CombinedAnalytics() {
                   <li>Tablet: {selectedAnalytics.devices.tablet}%</li>
                 </ul>
               </div>
+              {/* Locations */}
               <div>
                 <h3 className="text-white font-semibold">🌍 Locations</h3>
                 <ul>
@@ -305,6 +257,7 @@ export default function CombinedAnalytics() {
                   ))}
                 </ul>
               </div>
+              {/* Referrers */}
               <div>
                 <h3 className="text-white font-semibold">🔗 Referrers</h3>
                 <ul>
@@ -320,3 +273,8 @@ export default function CombinedAnalytics() {
     </div>
   )
 }
+
+
+
+
+

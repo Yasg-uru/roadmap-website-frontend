@@ -137,7 +137,7 @@ const StatsCard = ({ stats }: { stats: RoadmapStats }) => (
           <div className="flex items-center justify-center mb-2">
             <Users className="h-5 w-5 text-[#2563EB]" />
           </div>
-          <div className="text-2xl font-bold text-[#60A5FA]">{stats.ratingsCount.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-[#60A5FA]">{stats.ratingsCount?.toLocaleString()}</div>
           <div className="text-sm text-[#E2E8F0]">Reviews</div>
         </div>
       </div>

@@ -37,7 +37,7 @@ export const getRoadMapDetails = createAsyncThunk(
 export const generateRoadmap= createAsyncThunk("roadmap/generateroadmap", async (prompt:string ,{rejectWithValue})=>{
   try {
     const response = await axiosInstance.post("/roadmap/generate", {
-      prompt
+      userPrompt:prompt
     },{withCredentials:true});
     return response.data;
   } catch (error:any) {

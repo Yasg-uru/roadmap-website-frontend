@@ -9,7 +9,7 @@ import Navbar from "./pages/main-pages/navbar"
 import Roadmaps from "./pages/roadmap/roadmaps"
 import Home from "./pages/main-pages/home-page"
 import Roadmap from "./pages/main-pages/roadmap.example"
-import  RoadmapDetails  from "./pages/roadmap/roadmap-details"
+import RoadmapDetails from "./pages/roadmap/roadmap-details"
 import { useEffect } from "react"
 import { socket } from "./helper/useSocket"
 import { useAuth } from "./contexts/authContext"
@@ -17,29 +17,29 @@ import GenerateRoadmap from "./pages/roadmap-generation/generate-roadmap"
 import RoadmapDetailsPage from "./pages/roadmap/getroadmapdetails-page"
 
 function App() {
-  const {user}= useAuth()
-  useEffect(()=>{
-socket.emit("registerUser" , user?._id);
+  const { user } = useAuth()
+  useEffect(() => {
+    socket.emit("registerUser", user?._id);
 
   }, [])
   return (
     <>
-    <Navbar/>
-   <Routes>
-    <Route path="/" element={<Home/>} />
-    <Route path="/roadmap" element={<Roadmap/>}/>
-    <Route path="/signup" element={<Signup/>}/>
-    <Route path = "/verify/:email"  element={<Verify/>}/>
-    <Route path="/login" element={<Login/>}/>
-    <Route path="/forgot-password" element={<ForgotPassword/>}/>
-     
-    <Route path="/reset-password/:token" element={<ResetPassword/>}/>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/roadmap" element={<Roadmap />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/verify/:email" element={<Verify />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
-    <Route path="/roadmaps" element={<Roadmaps/>}/>
-    <Route path="/details/:roadmapId"  element={<RoadmapDetailsPage />}/>
-  <Route path="/generate-roadmap" element= {<GenerateRoadmap/>} />
-   </Routes>
-   </>
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+
+        <Route path="/roadmaps" element={<Roadmaps />} />
+        <Route path="/details/:roadmapId" element={<RoadmapDetailsPage />} />
+        <Route path="/generate-roadmap" element={<GenerateRoadmap />} />
+      </Routes>
+    </>
   )
 }
 

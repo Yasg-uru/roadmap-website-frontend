@@ -91,7 +91,11 @@ export default function CombinedAnalytics() {
   const handleFetchByDate = (date: string) => dispatch(fetchAnalyticsByDate(date))
   const handleDelete = (date: string) => dispatch(deleteAnalytics(date))
 
-  const filteredAnalytics = analyticsList.filter((item: any) => !item._id || item._id === currentUser?._id)
+ 
+   const filteredAnalytics = [...analyticsList].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+   )
+
 
   const progressData = progress
     ? [
@@ -147,7 +151,11 @@ export default function CombinedAnalytics() {
                       >
                         {bookmark.isFavorite ? "★" : "–"}
                       </Badge>
-                      <div className="text-white font-medium">{bookmark.roadmap}</div>
+                      <div className="text-white font-medium">
+                        {/* {bookmark.roadmap?.title || "Roadmap not found"} */}
+                         {bookmark.roadmap ? typeof bookmark.roadmap === "string" ? bookmark.roadmap : bookmark.roadmap.title || "roadmap unknown" : "roadmap unknown"}
+                        
+                         </div>
                       <div className="text-slate-300 text-sm">{(bookmark.tags || []).join(", ") || "—"}</div>
                       <div className="text-slate-400 text-sm italic truncate">{bookmark.notes || "No notes"}</div>
                     </div>

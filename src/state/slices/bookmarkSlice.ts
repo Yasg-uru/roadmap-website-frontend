@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
+import axiosInstance from "@/helper/axiosInstance";
 import type { Bookmark } from "../../types/Bookmark/bookmark";
 import type { PayloadAction } from "@reduxjs/toolkit";
 
@@ -19,7 +19,7 @@ export const fetchBookmarks = createAsyncThunk(
   "bookmarks/fetchBookmarks",
   async (userId: string, thunkAPI) => {
     try {
-      const response = await axios.get(`/api/bookmarks/${userId}`);
+      const response = await axiosInstance.get(`/api/bookmarks/${userId}`);
       return response.data as Bookmark[];
     } catch (error: any) {
       return thunkAPI.rejectWithValue(
@@ -33,7 +33,7 @@ export const upsertBookmark = createAsyncThunk(
   "bookmarks/upsertBookmark",
   async (bookmark: Partial<Bookmark>, thunkAPI) => {
     try {
-      const response = await axios.post("/api/bookmarks", bookmark);
+      const response = await axiosInstance.post("/api/bookmarks", bookmark);
       return response.data as Bookmark;
     } catch (error: any) {
       return thunkAPI.rejectWithValue(
@@ -50,7 +50,7 @@ export const deleteBookmark = createAsyncThunk(
     thunkAPI
   ) => {
     try {
-      await axios.delete(`/api/bookmarks/${userId}/${roadmapId}`);
+      await axiosInstance.delete(`/api/bookmarks/${userId}/${roadmapId}`);
       return roadmapId;
     } catch (error: any) {
       return thunkAPI.rejectWithValue(

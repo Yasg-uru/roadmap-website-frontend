@@ -2,7 +2,7 @@
 
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import axios from "axios";
+import axiosInstance from "@/helper/axiosInstance";
 import type { UserProgress } from "../../types/user/progress/UserProgress";
 
 interface UserProgressState {
@@ -25,7 +25,7 @@ export const fetchUserProgress = createAsyncThunk<
 >("userProgress/fetchUserProgress",
    async ({ userId, roadmapId }, thunkAPI) => {
   try {
-    const response = await axios.get(`/api/progress/user/${userId}/roadmap/${roadmapId}`);
+    const response = await axiosInstance.get(`/api/progress/user/${userId}/roadmap/${roadmapId}`);
     return response.data as UserProgress;
   } catch (error: any) {
     return thunkAPI.rejectWithValue(error.response?.data || "Failed to fetch user progress");
@@ -39,7 +39,7 @@ export const upsertUserProgress = createAsyncThunk<
   { rejectValue: string }
 >("userProgress/upsertUserProgress", async ({ userId, roadmapId, completedNodes }, thunkAPI) => {
   try {
-    const response = await axios.put(`/api/progress/user/${userId}/roadmap/${roadmapId}`, {
+    const response = await axiosInstance.put(`/api/progress/user/${userId}/roadmap/${roadmapId}`, {
       completedNodes,
     });
     return response.data as UserProgress;

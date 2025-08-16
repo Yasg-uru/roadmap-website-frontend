@@ -28,7 +28,7 @@ function App() {
     <Navbar/>
    <Routes>
     <Route path="/" element={<Home/>} />
-    <Route path="/roadmap" element={<Roadmap/>}/>
+    <Route path="/roadmap" element={<Roadmaps/>}/>
     <Route path="/signup" element={<Signup/>}/>
     <Route path = "/verify/:email"  element={<Verify/>}/>
     <Route path="/login" element={<Login/>}/>
@@ -39,6 +39,8 @@ function App() {
     <Route path="/roadmaps" element={<Roadmaps/>}/>
     <Route path="/details/:roadmapId"  element={<RoadmapDetailsPage />}/>
   <Route path="/generate-roadmap" element= {<GenerateRoadmap/>} />
+  <Route path="/progress" element={<Analytics />} />
+  
    </Routes>
    </>
   )

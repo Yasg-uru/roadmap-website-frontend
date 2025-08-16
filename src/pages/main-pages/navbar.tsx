@@ -23,7 +23,7 @@ const Navbar: React.FC = () => {
 
   const navItems: NavItem[] = [
     { id: 1, name: 'Home', icon: <Home className="w-5 h-5" />, path: '/' },
-    { id: 2, name: 'Roadmaps', icon: <Route className="w-5 h-5" />, path: '/roadmap' },
+    { id: 2, name: 'Roadmaps', icon: <Route className="w-5 h-5" />, path: '/roadmaps' },
     { id: 3, name: 'Progress', icon: <TrendingUp className="w-5 h-5" />, path: '/progress' },
     // { id: 4, name: 'Timeline', icon: <CalendarDays className="w-5 h-5" />, path: '/timeline' },
     { id: 5, name: 'Profile', icon: <User className="w-5 h-5" />, path: '/profile' },

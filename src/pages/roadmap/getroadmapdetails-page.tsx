@@ -1,9 +1,11 @@
+
 import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
+
 import {
   Star,
   Clock,
@@ -19,15 +21,20 @@ import {
   Calendar,
   UserIcon,
   Tag,
-  CheckCircle2,
-  Circle,
   AlertCircle,
+  Target,
+  TrendingUp,
 } from "lucide-react"
-import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch"
-import type { ImportanceLevel, NodeDifficulty, Review, RoadmapDetails, RoadmapDifficulty, RoadmapNode, RoadmapStats } from "@/types/user/roadmap/roadmap-details"
-import { getRoadMapDetails } from "@/state/slices/roadmapSlice"
-import { useParams } from "react-router-dom"
 
+import { useParams } from "react-router-dom"
+import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch"
+import { getRoadMapDetails } from "@/state/slices/roadmapSlice"
+import { fetchUserProgress, startRoadmap } from "@/state/slices/userProgressSlice"
+import { toast } from "sonner"
+import type { ImportanceLevel, NodeDifficulty, Review, RoadmapDetails, RoadmapDifficulty, RoadmapNode, RoadmapStats } from "@/types/user/roadmap/roadmap-details"
+import type { INodeProgressResponse, IUserProgressStatsResponse, ProgressStatus } from "@/types/user/progress/UserProgress"
+import { ProgressIndicator } from "@radix-ui/react-progress"
+import { ProgressSelector } from "./progress-selector"
 
 
 // Helper functions
@@ -79,7 +86,7 @@ const getResourceIcon = (type: string) => {
 // Components
 const RoadmapHeader = ({ roadmap }: { roadmap: RoadmapDetails }) => (
   <div className="relative">
-    <div className="h-64 bg-gradient-to-r from-[#0F172A] to-[#020617] rounded-lg overflow-hidden">
+    <div className="h-64 bg-gradient-to-r from-blue-900 to-purple-900 rounded-lg overflow-hidden">
       {roadmap.coverImage && (
         <img
           src={roadmap.coverImage.url || "/placeholder.svg"}
@@ -87,176 +94,160 @@ const RoadmapHeader = ({ roadmap }: { roadmap: RoadmapDetails }) => (
           className="w-full h-full object-cover opacity-30"
         />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
     </div>
 
     <div className="absolute bottom-6 left-6 right-6">
       <div className="flex items-center gap-2 mb-3">
-        <Badge className="bg-[#2563EB]/20 text-[#60A5FA] border-[#2563EB]/30 capitalize">{roadmap.category}</Badge>
+        <Badge variant="secondary" className="capitalize">
+          {roadmap.category}
+        </Badge>
         {roadmap.isFeatured && (
           <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Featured</Badge>
         )}
         <Badge className={`border ${getDifficultyColor(roadmap.difficulty)} capitalize`}>{roadmap.difficulty}</Badge>
       </div>
 
-      <h1 className="text-4xl font-bold text-[#60A5FA] mb-2">{roadmap.title}</h1>
-      <p className="text-[#E2E8F0] text-lg max-w-3xl">{roadmap.description}</p>
+      <h1 className="text-4xl font-bold text-foreground mb-2">{roadmap.title}</h1>
+      <p className="text-muted-foreground text-lg max-w-3xl">{roadmap.description}</p>
     </div>
   </div>
 )
 
 const StatsCard = ({ stats }: { stats: RoadmapStats }) => (
-  <Card className="bg-[#1E293B] border-[#334155]">
+  <Card>
     <CardContent className="p-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         <div className="text-center">
           <div className="flex items-center justify-center mb-2">
-            <Eye className="h-5 w-5 text-[#2563EB]" />
+            <Eye className="h-5 w-5 text-primary" />
           </div>
-          <div className="text-2xl font-bold text-[#60A5FA]">{stats.views.toLocaleString()}</div>
-          <div className="text-sm text-[#E2E8F0]">Views</div>
+          <div className="text-2xl font-bold text-foreground">{stats.views.toLocaleString()}</div>
+          <div className="text-sm text-muted-foreground">Views</div>
         </div>
 
         <div className="text-center">
           <div className="flex items-center justify-center mb-2">
-            <Trophy className="h-5 w-5 text-[#2563EB]" />
+            <Trophy className="h-5 w-5 text-primary" />
           </div>
-          <div className="text-2xl font-bold text-[#60A5FA]">{stats.completions.toLocaleString()}</div>
-          <div className="text-sm text-[#E2E8F0]">Completions</div>
+          <div className="text-2xl font-bold text-foreground">{stats.completions.toLocaleString()}</div>
+          <div className="text-sm text-muted-foreground">Completions</div>
         </div>
 
         <div className="text-center">
           <div className="flex items-center justify-center mb-2">
-            <Star className="h-5 w-5 text-[#2563EB]" />
+            <Star className="h-5 w-5 text-primary" />
           </div>
-          <div className="text-2xl font-bold text-[#60A5FA]">{stats.averageRating.toFixed(1)}</div>
-          <div className="text-sm text-[#E2E8F0]">Rating</div>
+          <div className="text-2xl font-bold text-foreground">{stats.averageRating.toFixed(1)}</div>
+          <div className="text-sm text-muted-foreground">Rating</div>
         </div>
 
         <div className="text-center">
           <div className="flex items-center justify-center mb-2">
-            <Users className="h-5 w-5 text-[#2563EB]" />
+            <Users className="h-5 w-5 text-primary" />
           </div>
-          <div className="text-2xl font-bold text-[#60A5FA]">{stats.ratingsCount?.toLocaleString()}</div>
-          <div className="text-sm text-[#E2E8F0]">Reviews</div>
+          <div className="text-2xl font-bold text-foreground">{stats.ratingsCount?.toLocaleString()}</div>
+          <div className="text-sm text-muted-foreground">Reviews</div>
         </div>
       </div>
     </CardContent>
   </Card>
 )
 
-const RoadmapInfo = ({ roadmap }: { roadmap: RoadmapDetails }) => (
-  <Card className="bg-[#1E293B] border-[#334155]">
+const ProgressStatsCard = ({ stats }: { stats: IUserProgressStatsResponse }) => (
+  <Card>
     <CardHeader>
-      <CardTitle className="text-[#60A5FA]">Roadmap Information</CardTitle>
+      <CardTitle className="flex items-center gap-2">
+        <Target className="h-5 w-5 text-primary" />
+        Your Progress
+      </CardTitle>
     </CardHeader>
     <CardContent className="space-y-4">
-      {roadmap.estimatedDuration && (
-        <div className="flex items-center gap-3">
-          <Clock className="h-5 w-5 text-[#2563EB]" />
-          <span className="text-[#E2E8F0]">
-            Estimated Duration: {roadmap.estimatedDuration.value} {roadmap.estimatedDuration.unit}
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Nodes Completed</span>
+          <span className="text-foreground font-medium">
+            {stats.completedNodes} of {stats.totalNodes}
           </span>
         </div>
-      )}
+        <Progress value={stats.completionPercentage} className="h-2" />
+        <p className="text-sm text-muted-foreground">{stats.completionPercentage}% Complete</p>
+      </div>
 
-      {roadmap.contributor && (
-        <div className="flex items-center gap-3">
-          <UserIcon className="h-5 w-5 text-[#2563EB]" />
-          <div className="flex items-center gap-2">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={roadmap.contributor.avatar || "/placeholder.svg"} />
-              <AvatarFallback className="bg-[#0F172A] text-[#60A5FA]">
-                {roadmap.contributor.username[0].toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-[#E2E8F0]">Created by {roadmap.contributor.username}</span>
-          </div>
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Resources Completed</span>
+          <span className="text-foreground font-medium">
+            {stats.completedResources} of {stats.totalResources}
+          </span>
         </div>
-      )}
+        <Progress value={(stats.completedResources / stats.totalResources) * 100} className="h-2" />
+      </div>
 
-      {roadmap.lastUpdated && (
-        <div className="flex items-center gap-3">
-          <Calendar className="h-5 w-5 text-[#2563EB]" />
-          <span className="text-[#E2E8F0]">Last updated: {roadmap.lastUpdated.toLocaleString()}</span>
+      <div className="pt-2 border-t border-border">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <TrendingUp className="h-4 w-4" />
+          Keep up the great work!
         </div>
-      )}
-
-      {roadmap.tags && roadmap.tags.length > 0 && (
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Tag className="h-5 w-5 text-[#2563EB]" />
-            <span className="text-[#E2E8F0]">Tags:</span>
-          </div>
-          <div className="flex flex-wrap gap-2 ml-8">
-            {roadmap.tags.map((tag, index) => (
-              <Badge key={index} className="bg-[#0F172A] text-[#3B82F6] border-[#2563EB]/30">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {roadmap.prerequisites && roadmap.prerequisites.length > 0 && (
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <AlertCircle className="h-5 w-5 text-[#2563EB]" />
-            <span className="text-[#E2E8F0]">Prerequisites:</span>
-          </div>
-          <div className="ml-8 space-y-1">
-            {roadmap.prerequisites.map((prereq) => (
-              <div key={prereq._id} className="text-[#3B82F6] hover:text-[#60A5FA] cursor-pointer">
-                • {prereq.title}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      </div>
     </CardContent>
   </Card>
 )
 
-const NodeCard = ({ node, depth = 0 }: { node: RoadmapNode; depth?: number }) => {
+const NodeCard = ({
+  node,
+  nodeProgress,
+  onProgressUpdate,
+  depth = 0,
+}: {
+  node: RoadmapNode
+  nodeProgress?: INodeProgressResponse
+  onProgressUpdate: (nodeId: string, status: ProgressStatus) => void
+  depth?: number
+}) => {
   const [isExpanded, setIsExpanded] = useState(depth < 2)
+  const currentStatus = nodeProgress?.status || "not_started"
+
+  const handleProgressChange = (status: ProgressStatus) => {
+    onProgressUpdate(node._id, status)
+  }
 
   return (
     <div className={`ml-${depth * 4}`}>
-      <Card className="bg-[#1E293B] border-[#334155] mb-4">
+      <Card className="mb-4">
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-3 mb-2">
+                <Progress value={currentStatus === "completed" ? 100 : currentStatus === "in_progress" ? 50 : 0} className="h-4 w-4" />
+
                 {node.children && node.children.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="p-1 h-6 w-6 text-[#60A5FA] hover:bg-[#0F172A]"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => setIsExpanded(!isExpanded)} className="p-1 h-6 w-6">
                     {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                   </Button>
                 )}
 
-                <h3 className="text-lg font-semibold text-[#60A5FA]">{node.title}</h3>
+                <h3 className="text-lg font-semibold text-foreground">{node.title}</h3>
 
                 {node.nodeType && (
-                  <Badge className="bg-[#2563EB]/20 text-[#3B82F6] border-[#2563EB]/30 capitalize text-xs">
+                  <Badge variant="outline" className="capitalize text-xs">
                     {node.nodeType}
                   </Badge>
                 )}
 
                 {node.isOptional && (
-                  <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30 text-xs">Optional</Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    Optional
+                  </Badge>
                 )}
               </div>
 
-              {node.description && <p className="text-[#E2E8F0] mb-3">{node.description}</p>}
+              {node.description && <p className="text-muted-foreground mb-3 ml-8">{node.description}</p>}
 
-              <div className="flex flex-wrap items-center gap-4 text-sm">
+              <div className="flex flex-wrap items-center gap-4 text-sm ml-8">
                 {node.estimatedDuration && (
-                  <div className="flex items-center gap-1 text-[#E2E8F0]">
-                    <Clock className="h-4 w-4 text-[#2563EB]" />
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Clock className="h-4 w-4 text-primary" />
                     {node.estimatedDuration.value} {node.estimatedDuration.unit}
                   </div>
                 )}
@@ -269,20 +260,25 @@ const NodeCard = ({ node, depth = 0 }: { node: RoadmapNode; depth?: number }) =>
 
                 {node.metadata?.importance && (
                   <div className={`flex items-center gap-1 text-xs ${getImportanceColor(node.metadata.importance)}`}>
-                    <Circle className="h-3 w-3 fill-current" />
+                    <AlertCircle className="h-3 w-3" />
                     {node.metadata.importance} priority
                   </div>
                 )}
               </div>
 
               {node.resources && node.resources.length > 0 && (
-                <div className="mt-3">
-                  <h4 className="text-sm font-medium text-[#60A5FA] mb-2">Resources:</h4>
+                <div className="mt-3 ml-8">
+                  <h4 className="text-sm font-medium text-foreground mb-2">Resources:</h4>
                   <div className="space-y-1">
                     {node.resources.map((resource) => (
                       <div key={resource._id} className="flex items-center gap-2 text-sm">
-                        <span className="text-[#2563EB]">{getResourceIcon(resource.type)}</span>
-                        <a href={resource.url} className="text-[#3B82F6] hover:text-[#60A5FA] hover:underline">
+                        <span className="text-primary">{getResourceIcon(resource.type)}</span>
+                        <a
+                          href={resource.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-primary/80 hover:underline"
+                        >
                           {resource.title}
                         </a>
                       </div>
@@ -292,24 +288,29 @@ const NodeCard = ({ node, depth = 0 }: { node: RoadmapNode; depth?: number }) =>
               )}
 
               {node.dependencies && node.dependencies.length > 0 && (
-                <div className="mt-3">
-                  <h4 className="text-sm font-medium text-[#60A5FA] mb-1">Dependencies:</h4>
-                  <div className="text-sm text-[#E2E8F0]">
+                <div className="mt-3 ml-8">
+                  <h4 className="text-sm font-medium text-foreground mb-1">Dependencies:</h4>
+                  <div className="text-sm text-muted-foreground">
                     {node.dependencies.map((dep, index) => (
                       <span key={dep._id}>
                         {index > 0 && ", "}
-                        <span className="text-[#3B82F6]">{dep.title}</span>
+                        <span className="text-primary">{dep.title}</span>
                       </span>
                     ))}
                   </div>
                 </div>
               )}
+
+              {nodeProgress?.notes && (
+                <div className="mt-3 ml-8">
+                  <h4 className="text-sm font-medium text-foreground mb-1">Notes:</h4>
+                  <p className="text-sm text-muted-foreground">{nodeProgress.notes}</p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 ml-4">
-              <Button variant="ghost" size="sm" className="text-[#3B82F6] hover:text-[#60A5FA] hover:bg-[#0F172A]">
-                <CheckCircle2 className="h-4 w-4" />
-              </Button>
+              <ProgressSelector currentStatus={currentStatus} onStatusChange={handleProgressChange} />
             </div>
           </div>
         </CardContent>
@@ -318,7 +319,13 @@ const NodeCard = ({ node, depth = 0 }: { node: RoadmapNode; depth?: number }) =>
       {isExpanded && node.children && (
         <div className="ml-6">
           {node.children.map((child) => (
-            <NodeCard key={child._id} node={child} depth={depth + 1} />
+            <NodeCard
+              key={child._id}
+              node={child}
+              nodeProgress={nodeProgress}
+              onProgressUpdate={onProgressUpdate}
+              depth={depth + 1}
+            />
           ))}
         </div>
       )}
@@ -326,26 +333,80 @@ const NodeCard = ({ node, depth = 0 }: { node: RoadmapNode; depth?: number }) =>
   )
 }
 
-const ReviewsSection = ({ reviews }: { reviews: Review[] }) => (
-  <Card className="bg-[#1E293B] border-[#334155]">
+const RoadmapInfo = ({ roadmap }: { roadmap: RoadmapDetails }) => (
+  <Card>
     <CardHeader>
-      <CardTitle className="text-[#60A5FA]">Reviews</CardTitle>
+      <CardTitle>Roadmap Information</CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      {roadmap.estimatedDuration && (
+        <div className="flex items-center gap-3">
+          <Clock className="h-5 w-5 text-primary" />
+          <span className="text-muted-foreground">
+            Estimated Duration: {roadmap.estimatedDuration.value} {roadmap.estimatedDuration.unit}
+          </span>
+        </div>
+      )}
+
+      {roadmap.contributor && (
+        <div className="flex items-center gap-3">
+          <UserIcon className="h-5 w-5 text-primary" />
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={roadmap.contributor.avatar || "/placeholder.svg"} />
+              <AvatarFallback>{roadmap.contributor.username[0].toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <span className="text-muted-foreground">Created by {roadmap.contributor.username}</span>
+          </div>
+        </div>
+      )}
+
+      {roadmap.lastUpdated && (
+        <div className="flex items-center gap-3">
+          <Calendar className="h-5 w-5 text-primary" />
+          <span className="text-muted-foreground">
+            Last updated: {new Date(roadmap.lastUpdated).toLocaleDateString()}
+          </span>
+        </div>
+      )}
+
+      {roadmap.tags && roadmap.tags.length > 0 && (
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <Tag className="h-5 w-5 text-primary" />
+            <span className="text-muted-foreground">Tags:</span>
+          </div>
+          <div className="flex flex-wrap gap-2 ml-8">
+            {roadmap.tags.map((tag, index) => (
+              <Badge key={index} variant="secondary">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+    </CardContent>
+  </Card>
+)
+
+const ReviewsSection = ({ reviews }: { reviews: Review[] }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Reviews</CardTitle>
     </CardHeader>
     <CardContent>
       <div className="space-y-4">
         {reviews.map((review) => (
-          <div key={review._id} className="border-b border-[#334155] pb-4 last:border-b-0">
+          <div key={review._id} className="border-b border-border pb-4 last:border-b-0">
             <div className="flex items-start gap-3">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={review.user.avatar || "/placeholder.svg"} />
-                <AvatarFallback className="bg-[#0F172A] text-[#60A5FA]">
-                  {review.user.username[0].toUpperCase()}
-                </AvatarFallback>
+                <AvatarFallback>{review.user.username[0].toUpperCase()}</AvatarFallback>
               </Avatar>
 
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-[#60A5FA]">{review.user.username}</span>
+                  <span className="font-medium text-foreground">{review.user.username}</span>
                   <div className="flex items-center">
                     {[...Array(5)].map((_, i) => (
                       <Star
@@ -354,10 +415,10 @@ const ReviewsSection = ({ reviews }: { reviews: Review[] }) => (
                       />
                     ))}
                   </div>
-                  <span className="text-sm text-[#E2E8F0]">{review.createdAt.toLocaleDateString()}</span>
+                  <span className="text-sm text-muted-foreground">{review.createdAt.toLocaleDateString()}</span>
                 </div>
 
-                {review.comment && <p className="text-[#E2E8F0]">{review.comment}</p>}
+                {review.comment && <p className="text-muted-foreground">{review.comment}</p>}
               </div>
             </div>
           </div>
@@ -368,20 +429,122 @@ const ReviewsSection = ({ reviews }: { reviews: Review[] }) => (
 )
 
 export default function RoadmapDetailsPage() {
-  const { roadmapId } = useParams<{ roadmapId: string }>();
- 
+   const { roadmapId } = useParams<{ roadmapId: string }>();
   const dispatch = useAppDispatch();
-  const {roadmap:RoadmapDetails} = useAppSelector((state)=>state.roadmap);
-  useEffect(()=>{if(roadmapId)dispatch(getRoadMapDetails(roadmapId))},[roadmapId])
-if(!RoadmapDetails){
-  return null;
 
-}
-const nodes = RoadmapDetails.nodes || [];
-const roadmap = RoadmapDetails.roadmap || {};
+ 
 
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { roadmap: RoadmapDetails } = useAppSelector((state) => state.roadmap);
+  const { progress:userProgress } = useAppSelector((state) => state.userProgress);
+
+  useEffect(() => {
+    if (!roadmapId) return;
+
+    dispatch(getRoadMapDetails(roadmapId))
+      .then(() => {
+        dispatch(fetchUserProgress(roadmapId))
+          .then(() => {
+            toast.success("Fetched user progress successfully");
+          })
+          .catch(() => {
+            toast.error("Failed to fetch the user progress");
+          });
+      })
+      .catch(() => {
+        toast.error("Failed to fetch roadmap details");
+      });
+  }, [roadmapId, dispatch]);
+
+  if (!RoadmapDetails) {
+    return null;
+  }
+
+  const startProgress = () => {
+    if (!roadmapId) return;
+
+    dispatch(startRoadmap(roadmapId))
+      .unwrap()
+      .then(() => {
+        toast.success("Roadmap started successfully");
+      })
+      .catch(() => {
+        toast.error("Failed to start roadmap");
+      });
+  };
+
+ 
+
+
+  
+   const nodes = RoadmapDetails.nodes || [];
+  const roadmap = RoadmapDetails.roadmap || {};
+  // Mock API call to update progress
+  const updateNodeProgress = async (nodeId: string, status: ProgressStatus) => {
+    setIsLoading(true)
+
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    // Update local state
+    // setUserProgress((prev) => {
+    //   const updatedNodes = prev.nodes.map((nodeProgress) => {
+    //     if (nodeProgress.node._id === nodeId) {
+    //       return {
+    //         ...nodeProgress,
+    //         status,
+    //         ...(status === "completed" && { completedAt: new Date().toISOString() }),
+    //         ...(status === "in_progress" && !nodeProgress.startedAt && { startedAt: new Date().toISOString() }),
+    //       }
+    //     }
+    //     return nodeProgress
+    //   })
+
+    //   // If node doesn't exist in progress, add it
+    //   const existingNode = prev.nodes.find((n) => n.node._id === nodeId)
+    //   if (!existingNode) {
+    //     const roadmapNode = roadmap.nodes?.find((n) => n._id === nodeId)
+    //     if (roadmapNode) {
+    //       updatedNodes.push({
+    //         node: {
+    //           _id: roadmapNode._id,
+    //           title: roadmapNode.title,
+    //           description: roadmapNode.description || "",
+    //           nodeType: roadmapNode.nodeType || "concept",
+    //           id: roadmapNode.id || roadmapNode._id,
+    //         },
+    //         status,
+    //         ...(status === "completed" && { completedAt: new Date().toISOString() }),
+    //         ...(status === "in_progress" && { startedAt: new Date().toISOString() }),
+    //         resources: [],
+    //       })
+    //     }
+    //   }
+
+    //   // Recalculate stats
+    //   const completedNodes = updatedNodes.filter((n) => n.status === "completed").length
+    //   const totalNodes = (roadmap.nodes ?? []).length
+    //   const completionPercentage = Math.round((completedNodes / totalNodes) * 100)
+
+    //   return {
+    //     ...prev,
+    //     nodes: updatedNodes,
+    //     stats: {
+    //       ...prev.stats,
+    //       completedNodes,
+    //       completionPercentage,
+    //     },
+    //   }
+    // })
+
+    setIsLoading(false)
+  }
+
+  const getNodeProgress = (nodeId: string): INodeProgressResponse | undefined => {
+    return userProgress?.nodes?.find((progress) => progress.node._id === nodeId)
+  }
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F172A] to-[#020617]">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <RoadmapHeader roadmap={roadmap} />
@@ -395,25 +558,30 @@ const roadmap = RoadmapDetails.roadmap || {};
           <div className="lg:col-span-2 space-y-8">
             {/* Long Description */}
             {roadmap.longDescription && (
-              <Card className="bg-[#1E293B] border-[#334155]">
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-[#60A5FA]">About This Roadmap</CardTitle>
+                  <CardTitle>About This Roadmap</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-[#E2E8F0] leading-relaxed">{roadmap.longDescription}</p>
+                  <p className="text-muted-foreground leading-relaxed">{roadmap.longDescription}</p>
                 </CardContent>
               </Card>
             )}
 
             {/* Roadmap Nodes */}
-            <Card className="bg-[#1E293B] border-[#334155]">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-[#60A5FA]">Learning Path</CardTitle>
+                <CardTitle>Learning Path</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {nodes.map((node) => (
-                    <NodeCard key={node._id} node={node} />
+                    <NodeCard
+                      key={node._id}
+                      node={node}
+                      nodeProgress={getNodeProgress(node._id)}
+                      onProgressUpdate={updateNodeProgress}
+                    />
                   ))}
                 </div>
               </CardContent>
@@ -427,39 +595,21 @@ const roadmap = RoadmapDetails.roadmap || {};
           <div className="space-y-6">
             <RoadmapInfo roadmap={roadmap} />
 
+            {/* Progress Stats */}
+            {userProgress?.stats && <ProgressStatsCard stats={userProgress.stats} />}
+
             {/* Action Buttons */}
-            <Card className="bg-[#1E293B] border-[#334155]">
+            <Card>
               <CardContent className="p-6 space-y-3">
-                <Button className="w-full bg-[#3B82F6] hover:bg-[#2563EB] text-white">Start Learning</Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-[#334155] text-[#60A5FA] hover:bg-[#0F172A] bg-transparent"
-                >
+                <Button className="w-full" onClick={startProgress} disabled={isLoading}>
+                  {userProgress && userProgress.stats.completedNodes > 0 ? "Continue Learning" : "Start Learning"}
+                </Button>
+                <Button variant="outline" className="w-full bg-transparent">
                   Save to Favorites
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-[#334155] text-[#60A5FA] hover:bg-[#0F172A] bg-transparent"
-                >
+                <Button variant="outline" className="w-full bg-transparent">
                   Share Roadmap
                 </Button>
-              </CardContent>
-            </Card>
-
-            {/* Progress Card */}
-            <Card className="bg-[#1E293B] border-[#334155]">
-              <CardHeader>
-                <CardTitle className="text-[#60A5FA]">Your Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#E2E8F0]">Completed</span>
-                    <span className="text-[#60A5FA]">3 of 12 topics</span>
-                  </div>
-                  <Progress value={25} className="h-2" />
-                  <p className="text-sm text-[#E2E8F0]">25% Complete</p>
-                </div>
               </CardContent>
             </Card>
           </div>

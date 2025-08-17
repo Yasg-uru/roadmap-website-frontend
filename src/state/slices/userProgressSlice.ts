@@ -3,10 +3,10 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import axios from "axios";
-import type { UserProgress } from "../../types/user/progress/UserProgress";
+import type { IUserProgressResponse } from "../../types/user/progress/UserProgress";
 
 interface UserProgressState {
-  progress: UserProgress | null;
+  progress: IUserProgressResponse | null;
   loading: boolean;
   error: string | null;
 }
@@ -18,7 +18,7 @@ const initialState: UserProgressState = {
 };
 export const startRoadmap = createAsyncThunk(
   "userProgress/startRoadmap",
-  async (roadmapId, { rejectWithValue }) => {
+  async (roadmapId: string, { rejectWithValue }) => {
     try {
       const response = await axios.post(
         `http://localhost:8000/api/progress/user/start/${roadmapId}`,
@@ -27,6 +27,7 @@ export const startRoadmap = createAsyncThunk(
       );
       return response.data;
     } catch (error: any) {
+      console.log("this is an error inside start roadmap :", error);
       return rejectWithValue(
         error.response?.data || "Failed to fetch user progress"
       );
@@ -35,26 +36,26 @@ export const startRoadmap = createAsyncThunk(
 );
 
 // Fetch user progress for a roadmap
-export const fetchUserProgress = createAsyncThunk<
-  UserProgress,
-  { userId: string; roadmapId: string },
-  { rejectValue: string }
->("userProgress/fetchUserProgress", async ({ userId, roadmapId }, thunkAPI) => {
-  try {
-    const response = await axios.get(
-      `/api/progress/user/${userId}/roadmap/${roadmapId}`
-    );
-    return response.data as UserProgress;
-  } catch (error: any) {
-    return thunkAPI.rejectWithValue(
-      error.response?.data || "Failed to fetch user progress"
-    );
+export const fetchUserProgress = createAsyncThunk(
+  "userProgress/fetchUserProgress",
+  async (roadmapId: string, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/api/progress/user/roadmap/${roadmapId}`,
+        { withCredentials: true }
+      );
+      return response.data as IUserProgressResponse;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data || "Failed to fetch user progress"
+      );
+    }
   }
-});
+);
 
 // Upsert user progress (completed nodes)
 export const upsertUserProgress = createAsyncThunk<
-  UserProgress,
+  IUserProgressResponse,
   { userId: string; roadmapId: string; completedNodes: string[] },
   { rejectValue: string }
 >(
@@ -67,7 +68,7 @@ export const upsertUserProgress = createAsyncThunk<
           completedNodes,
         }
       );
-      return response.data as UserProgress;
+      return response.data as IUserProgressResponse;
     } catch (error: any) {
       return thunkAPI.rejectWithValue(
         error.response?.data || "Failed to upsert user progress"
@@ -94,19 +95,19 @@ const userProgressSlice = createSlice({
       })
       .addCase(
         fetchUserProgress.fulfilled,
-        (state, action: PayloadAction<UserProgress>) => {
+        (state, action: PayloadAction<IUserProgressResponse>) => {
           state.loading = false;
           state.progress = action.payload;
         }
       )
-      .addCase(fetchUserProgress.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload ?? "Unknown error";
-      })
+      // .addCase(fetchUserProgress.rejected, (state, action) => {
+      //   state.loading = false;
+      //   state.error = action.payload ?? "Unknown error";
+      // })
 
       .addCase(
         upsertUserProgress.fulfilled,
-        (state, action: PayloadAction<UserProgress>) => {
+        (state, action: PayloadAction<IUserProgressResponse>) => {
           state.progress = action.payload;
         }
       );

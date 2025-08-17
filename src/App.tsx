@@ -20,29 +20,29 @@ import Analytics from './pages/Analytics/Analytics'
 function App() {
   const { user } = useAuth()
   useEffect(() => {
-    socket.emit("registerUser", user?._id);
+    if (user) socket.emit("registerUser", user?._id);
 
-  }, [])
+  }, [user])
   return (
     <>
-    <Navbar/>
-   <Routes>
-    <Route path="/" element={<Home/>} />
-    <Route path="/roadmap" element={<Roadmaps/>}/>
-    <Route path="/signup" element={<Signup/>}/>
-    <Route path = "/verify/:email"  element={<Verify/>}/>
-    <Route path="/login" element={<Login/>}/>
-    <Route path="/forgot-password" element={<ForgotPassword/>}/>
-     
-    <Route path="/reset-password/:token" element={<ResetPassword/>}/>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/roadmap" element={<Roadmaps />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/verify/:email" element={<Verify />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
-    <Route path="/roadmaps" element={<Roadmaps/>}/>
-    <Route path="/details/:roadmapId"  element={<RoadmapDetailsPage />}/>
-  <Route path="/generate-roadmap" element= {<GenerateRoadmap/>} />
-  <Route path="/progress" element={<Analytics />} />
-  
-   </Routes>
-   </>
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+
+        <Route path="/roadmaps" element={<Roadmaps />} />
+        <Route path="/details/:roadmapId" element={<RoadmapDetailsPage />} />
+        <Route path="/generate-roadmap" element={<GenerateRoadmap />} />
+        <Route path="/progress" element={<Analytics />} />
+
+      </Routes>
+    </>
   )
 }
 

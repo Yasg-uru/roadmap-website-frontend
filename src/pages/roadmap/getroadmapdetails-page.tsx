@@ -29,12 +29,13 @@ import {
 import { useParams } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch"
 import { getRoadMapDetails } from "@/state/slices/roadmapSlice"
-import { fetchUserProgress, startRoadmap } from "@/state/slices/userProgressSlice"
+import { fetchUserProgress, startRoadmap, updateUserProgress } from "@/state/slices/userProgressSlice"
 import { toast } from "sonner"
 import type { ImportanceLevel, NodeDifficulty, Review, RoadmapDetails, RoadmapDifficulty, RoadmapNode, RoadmapStats } from "@/types/user/roadmap/roadmap-details"
 import type { INodeProgressResponse, IUserProgressStatsResponse, ProgressStatus } from "@/types/user/progress/UserProgress"
 import { ProgressIndicator } from "@radix-ui/react-progress"
 import { ProgressSelector } from "./progress-selector"
+import { socket } from "@/helper/useSocket"
 
 
 // Helper functions
@@ -197,19 +198,24 @@ const ProgressStatsCard = ({ stats }: { stats: IUserProgressStatsResponse }) => 
 const NodeCard = ({
   node,
   nodeProgress,
-  onProgressUpdate,
+
   depth = 0,
+  roadmapId
 }: {
   node: RoadmapNode
   nodeProgress?: INodeProgressResponse
-  onProgressUpdate: (nodeId: string, status: ProgressStatus) => void
   depth?: number
+  roadmapId?: string
 }) => {
   const [isExpanded, setIsExpanded] = useState(depth < 2)
   const currentStatus = nodeProgress?.status || "not_started"
-
+  const dispatch = useAppDispatch();
   const handleProgressChange = (status: ProgressStatus) => {
-    onProgressUpdate(node._id, status)
+    dispatch(updateUserProgress({ roadmapId: roadmapId ?? "", nodeId: node._id, status })).unwrap().then(()=>{
+      toast.success("progress updated successfully")
+    }).catch(()=>{
+      toast.error("failed to update progress")
+    })
   }
 
   return (
@@ -323,8 +329,9 @@ const NodeCard = ({
               key={child._id}
               node={child}
               nodeProgress={nodeProgress}
-              onProgressUpdate={onProgressUpdate}
+
               depth={depth + 1}
+              roadmapId={roadmapId}
             />
           ))}
         </div>
@@ -429,14 +436,17 @@ const ReviewsSection = ({ reviews }: { reviews: Review[] }) => (
 )
 
 export default function RoadmapDetailsPage() {
-   const { roadmapId } = useParams<{ roadmapId: string }>();
+  const { roadmapId } = useParams<{ roadmapId: string }>();
   const dispatch = useAppDispatch();
-
- 
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { roadmap: RoadmapDetails } = useAppSelector((state) => state.roadmap);
-  const { progress:userProgress } = useAppSelector((state) => state.userProgress);
+  const { progress } = useAppSelector((state) => state.userProgress);
+  const [userProgress, setUserProgress] = useState(progress);
+
+  useEffect(() => {
+    if (progress) setUserProgress(progress);
+  }, [progress]);
 
   useEffect(() => {
     if (!roadmapId) return;
@@ -444,101 +454,51 @@ export default function RoadmapDetailsPage() {
     dispatch(getRoadMapDetails(roadmapId))
       .then(() => {
         dispatch(fetchUserProgress(roadmapId))
-          .then(() => {
-            toast.success("Fetched user progress successfully");
-          })
-          .catch(() => {
-            toast.error("Failed to fetch the user progress");
-          });
+          .then(() => toast.success("Fetched user progress successfully"))
+          .catch(() => toast.error("Failed to fetch the user progress"));
       })
-      .catch(() => {
-        toast.error("Failed to fetch roadmap details");
-      });
+      .catch(() => toast.error("Failed to fetch roadmap details"));
   }, [roadmapId, dispatch]);
 
-  if (!RoadmapDetails) {
-    return null;
-  }
+  useEffect(() => {
+    socket.on("progressUpdated", ({ roadmapId: id, nodeId, status }) => {
+      console.log('this is a socket event ', roadmapId, nodeId , status)
+      if (id === roadmapId) {
+        setUserProgress((prev) => {
+          if (!prev) return prev;
+
+          return {
+            ...prev,
+            nodes: prev.nodes.map((node) =>
+              node.node._id === nodeId ? { ...node, status } : node
+            ),
+          };
+        });
+      }
+    });
+
+    // cleanup socket listener on unmount
+    return () => {
+      socket.off("progressUpdated");
+    };
+  }, [roadmapId]);
 
   const startProgress = () => {
     if (!roadmapId) return;
 
     dispatch(startRoadmap(roadmapId))
       .unwrap()
-      .then(() => {
-        toast.success("Roadmap started successfully");
-      })
-      .catch(() => {
-        toast.error("Failed to start roadmap");
-      });
+      .then(() => toast.success("Roadmap started successfully"))
+      .catch(() => toast.error("Failed to start roadmap"));
   };
 
- 
-
-
-  
-   const nodes = RoadmapDetails.nodes || [];
-  const roadmap = RoadmapDetails.roadmap || {};
-  // Mock API call to update progress
-  const updateNodeProgress = async (nodeId: string, status: ProgressStatus) => {
-    setIsLoading(true)
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    // Update local state
-    // setUserProgress((prev) => {
-    //   const updatedNodes = prev.nodes.map((nodeProgress) => {
-    //     if (nodeProgress.node._id === nodeId) {
-    //       return {
-    //         ...nodeProgress,
-    //         status,
-    //         ...(status === "completed" && { completedAt: new Date().toISOString() }),
-    //         ...(status === "in_progress" && !nodeProgress.startedAt && { startedAt: new Date().toISOString() }),
-    //       }
-    //     }
-    //     return nodeProgress
-    //   })
-
-    //   // If node doesn't exist in progress, add it
-    //   const existingNode = prev.nodes.find((n) => n.node._id === nodeId)
-    //   if (!existingNode) {
-    //     const roadmapNode = roadmap.nodes?.find((n) => n._id === nodeId)
-    //     if (roadmapNode) {
-    //       updatedNodes.push({
-    //         node: {
-    //           _id: roadmapNode._id,
-    //           title: roadmapNode.title,
-    //           description: roadmapNode.description || "",
-    //           nodeType: roadmapNode.nodeType || "concept",
-    //           id: roadmapNode.id || roadmapNode._id,
-    //         },
-    //         status,
-    //         ...(status === "completed" && { completedAt: new Date().toISOString() }),
-    //         ...(status === "in_progress" && { startedAt: new Date().toISOString() }),
-    //         resources: [],
-    //       })
-    //     }
-    //   }
-
-    //   // Recalculate stats
-    //   const completedNodes = updatedNodes.filter((n) => n.status === "completed").length
-    //   const totalNodes = (roadmap.nodes ?? []).length
-    //   const completionPercentage = Math.round((completedNodes / totalNodes) * 100)
-
-    //   return {
-    //     ...prev,
-    //     nodes: updatedNodes,
-    //     stats: {
-    //       ...prev.stats,
-    //       completedNodes,
-    //       completionPercentage,
-    //     },
-    //   }
-    // })
-
-    setIsLoading(false)
+  // 👉 Now conditionally render after all hooks
+  if (!RoadmapDetails) {
+    return <p>Loading roadmap...</p>;
   }
+
+  const nodes = RoadmapDetails.nodes || [];
+  const roadmap = RoadmapDetails.roadmap || {};
 
   const getNodeProgress = (nodeId: string): INodeProgressResponse | undefined => {
     return userProgress?.nodes?.find((progress) => progress.node._id === nodeId)
@@ -580,7 +540,8 @@ export default function RoadmapDetailsPage() {
                       key={node._id}
                       node={node}
                       nodeProgress={getNodeProgress(node._id)}
-                      onProgressUpdate={updateNodeProgress}
+
+                      roadmapId={roadmapId}
                     />
                   ))}
                 </div>

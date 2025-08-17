@@ -52,6 +52,30 @@ export const fetchUserProgress = createAsyncThunk(
     }
   }
 );
+export const updateUserProgress = createAsyncThunk(
+  "userProgress/updateUserProgress",
+  async (
+    {
+      roadmapId,
+      nodeId,
+      status,
+    }: { roadmapId: string; nodeId: string; status: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await axios.patch(
+        `http://localhost:8000/api/progress/user/roadmap/${roadmapId}/${nodeId}`,
+        { status },
+        { withCredentials: true }
+      );
+      return response.data as IUserProgressResponse;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data || "Failed to update user progress"
+      );
+    }
+  }
+);
 
 // Upsert user progress (completed nodes)
 export const upsertUserProgress = createAsyncThunk<

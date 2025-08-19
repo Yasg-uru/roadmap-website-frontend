@@ -15,7 +15,8 @@ import { socket } from "./helper/useSocket"
 import { useAuth } from "./contexts/authContext"
 import GenerateRoadmap from "./pages/roadmap-generation/generate-roadmap"
 import RoadmapDetailsPage from "./pages/roadmap/getroadmapdetails-page"
-import Analytics from './pages/Analytics/Analytics'
+import Dashboard from "./pages/Analytics/main"
+
 
 function App() {
   const { user } = useAuth()
@@ -39,7 +40,7 @@ function App() {
         <Route path="/roadmaps" element={<Roadmaps />} />
         <Route path="/details/:roadmapId" element={<RoadmapDetailsPage />} />
         <Route path="/generate-roadmap" element={<GenerateRoadmap />} />
-        <Route path="/progress" element={<Analytics />} />
+        <Route path="/progress" element={<Dashboard />} />
 
       </Routes>
     </>

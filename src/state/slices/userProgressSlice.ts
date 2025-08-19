@@ -4,17 +4,25 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import axios from "axios";
 import type { IUserProgressResponse } from "../../types/user/progress/UserProgress";
-
+export interface CourseProgress {
+  id: string; // unique identifier (e.g. "frontend-dev")
+  title: string; // course name
+  percentage: number; // progress percentage (0–100)
+  current: number; // number of lessons/modules completed
+  total: number; // total lessons/modules
+}
 interface UserProgressState {
   progress: IUserProgressResponse | null;
   loading: boolean;
   error: string | null;
+  userCourseProgress: CourseProgress[];
 }
 
 const initialState: UserProgressState = {
   progress: null,
   loading: false,
   error: null,
+  userCourseProgress: [],
 };
 export const startRoadmap = createAsyncThunk(
   "userProgress/startRoadmap",
@@ -23,6 +31,24 @@ export const startRoadmap = createAsyncThunk(
       const response = await axios.post(
         `http://localhost:8000/api/progress/user/start/${roadmapId}`,
         {},
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.log("this is an error inside start roadmap :", error);
+      return rejectWithValue(
+        error.response?.data || "Failed to fetch user progress"
+      );
+    }
+  }
+);
+export const getUserRoadmapProgressForDashBoard = createAsyncThunk(
+  "userProgress/getUserRoadmapProgressForDashBoard",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/api/progress/user/courses`,
+
         { withCredentials: true }
       );
       return response.data;
@@ -133,6 +159,12 @@ const userProgressSlice = createSlice({
         upsertUserProgress.fulfilled,
         (state, action: PayloadAction<IUserProgressResponse>) => {
           state.progress = action.payload;
+        }
+      )
+      .addCase(
+        getUserRoadmapProgressForDashBoard.fulfilled,
+        (state, action) => {
+          state.userCourseProgress = action.payload?.courses ?? [];
         }
       );
   },

@@ -1,10 +1,33 @@
+"use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 
 import {
   Star,
@@ -24,6 +47,8 @@ import {
   AlertCircle,
   Target,
   TrendingUp,
+  BookmarkPlus,
+  BookmarkMinus,
 } from "lucide-react"
 
 import { useParams } from "react-router-dom"
@@ -31,12 +56,30 @@ import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch"
 import { getRoadMapDetails } from "@/state/slices/roadmapSlice"
 import { fetchUserProgress, startRoadmap, updateUserProgress } from "@/state/slices/userProgressSlice"
 import { toast } from "sonner"
-import type { ImportanceLevel, NodeDifficulty, Review, RoadmapDetails, RoadmapDifficulty, RoadmapNode, RoadmapStats } from "@/types/user/roadmap/roadmap-details"
-import type { INodeProgressResponse, IUserProgressStatsResponse, ProgressStatus } from "@/types/user/progress/UserProgress"
-import { ProgressIndicator } from "@radix-ui/react-progress"
+import type {
+  ImportanceLevel,
+  NodeDifficulty,
+  Review,
+  RoadmapDetails,
+  RoadmapDifficulty,
+  RoadmapNode,
+  RoadmapStats,
+} from "@/types/user/roadmap/roadmap-details"
+import type {
+  INodeProgressResponse,
+  IUserProgressStatsResponse,
+  ProgressStatus,
+} from "@/types/user/progress/UserProgress"
 import { ProgressSelector } from "./progress-selector"
 import { socket } from "@/helper/useSocket"
+import { checkIsBookMarked, CreateBookMark, deleteBookmark } from "@/state/slices/bookmarkSlice"
 
+export interface IBookmarkRequest {
+  roadmap: string
+  tags?: string[]
+  notes?: string
+  isFavorite?: boolean
+}
 
 // Helper functions
 const getDifficultyColor = (difficulty?: RoadmapDifficulty | NodeDifficulty) => {
@@ -200,7 +243,7 @@ const NodeCard = ({
   nodeProgress,
 
   depth = 0,
-  roadmapId
+  roadmapId,
 }: {
   node: RoadmapNode
   nodeProgress?: INodeProgressResponse
@@ -209,13 +252,16 @@ const NodeCard = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(depth < 2)
   const currentStatus = nodeProgress?.status || "not_started"
-  const dispatch = useAppDispatch();
+  const dispatch = useAppDispatch()
   const handleProgressChange = (status: ProgressStatus) => {
-    dispatch(updateUserProgress({ roadmapId: roadmapId ?? "", nodeId: node._id, status })).unwrap().then(()=>{
-      toast.success("progress updated successfully")
-    }).catch(()=>{
-      toast.error("failed to update progress")
-    })
+    dispatch(updateUserProgress({ roadmapId: roadmapId ?? "", nodeId: node._id, status }))
+      .unwrap()
+      .then(() => {
+        toast.success("progress updated successfully")
+      })
+      .catch(() => {
+        toast.error("failed to update progress")
+      })
   }
 
   return (
@@ -225,7 +271,10 @@ const NodeCard = ({
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <Progress value={currentStatus === "completed" ? 100 : currentStatus === "in_progress" ? 50 : 0} className="h-4 w-4" />
+                <Progress
+                  value={currentStatus === "completed" ? 100 : currentStatus === "in_progress" ? 50 : 0}
+                  className="h-4 w-4"
+                />
 
                 {node.children && node.children.length > 0 && (
                   <Button variant="ghost" size="sm" onClick={() => setIsExpanded(!isExpanded)} className="p-1 h-6 w-6">
@@ -329,7 +378,6 @@ const NodeCard = ({
               key={child._id}
               node={child}
               nodeProgress={nodeProgress}
-
               depth={depth + 1}
               roadmapId={roadmapId}
             />
@@ -436,69 +484,147 @@ const ReviewsSection = ({ reviews }: { reviews: Review[] }) => (
 )
 
 export default function RoadmapDetailsPage() {
-  const { roadmapId } = useParams<{ roadmapId: string }>();
-  const dispatch = useAppDispatch();
+  const { roadmapId } = useParams<{ roadmapId: string }>()
+  const dispatch = useAppDispatch()
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { roadmap: RoadmapDetails } = useAppSelector((state) => state.roadmap);
-  const { progress } = useAppSelector((state) => state.userProgress);
-  const [userProgress, setUserProgress] = useState(progress);
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const { roadmap: RoadmapDetails } = useAppSelector((state) => state.roadmap)
+  const { progress } = useAppSelector((state) => state.userProgress)
+  const [userProgress, setUserProgress] = useState(progress)
+
+  const [isBookmarkModalOpen, setIsBookmarkModalOpen] = useState(false)
+  const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = useState(false)
+  const [isBookmarkMutating, setIsBookmarkMutating] = useState(false)
+  const [tagsInput, setTagsInput] = useState<string>("")
+  const [notesInput, setNotesInput] = useState<string>("")
+  const [isFavoriteInput, setIsFavoriteInput] = useState<boolean>(false)
+
+
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(false)
 
   useEffect(() => {
-    if (progress) setUserProgress(progress);
-  }, [progress]);
+    if (RoadmapDetails?.roadmap._id) {
+      dispatch(checkIsBookMarked(RoadmapDetails.roadmap._id)).unwrap().then((res) => {
+        setIsBookmarked(res.isBookmarked)
+      })
+    }
+  }, [RoadmapDetails])
 
   useEffect(() => {
-    if (!roadmapId) return;
+    if (progress) setUserProgress(progress)
+  }, [progress])
+
+  useEffect(() => {
+    if (!roadmapId) return
 
     dispatch(getRoadMapDetails(roadmapId))
       .then(() => {
         dispatch(fetchUserProgress(roadmapId))
           .then(() => toast.success("Fetched user progress successfully"))
-          .catch(() => toast.error("Failed to fetch the user progress"));
+          .catch(() => toast.error("Failed to fetch the user progress"))
       })
-      .catch(() => toast.error("Failed to fetch roadmap details"));
-  }, [roadmapId, dispatch]);
+      .catch(() => toast.error("Failed to fetch roadmap details"))
+  }, [roadmapId, dispatch])
 
   useEffect(() => {
     socket.on("progressUpdated", ({ roadmapId: id, nodeId, status }) => {
-      console.log('this is a socket event ', roadmapId, nodeId , status)
+      console.log("this is a socket event ", roadmapId, nodeId, status)
       if (id === roadmapId) {
         setUserProgress((prev) => {
-          if (!prev) return prev;
+          if (!prev) return prev
 
           return {
             ...prev,
-            nodes: prev.nodes.map((node) =>
-              node.node._id === nodeId ? { ...node, status } : node
-            ),
-          };
-        });
+            nodes: prev.nodes.map((node) => (node.node._id === nodeId ? { ...node, status } : node)),
+          }
+        })
       }
-    });
+    })
 
     // cleanup socket listener on unmount
     return () => {
-      socket.off("progressUpdated");
-    };
-  }, [roadmapId]);
+      socket.off("progressUpdated")
+    }
+  }, [roadmapId])
 
   const startProgress = () => {
-    if (!roadmapId) return;
+    if (!roadmapId) return
 
     dispatch(startRoadmap(roadmapId))
       .unwrap()
       .then(() => toast.success("Roadmap started successfully"))
-      .catch(() => toast.error("Failed to start roadmap"));
+      .catch(() => toast.error("Failed to start roadmap"))
+  }
+const handleAddBookmark = () => {
+  if (!roadmapId) return;
+
+  const payload: IBookmarkRequest = {
+    roadmap: roadmapId,
+    tags: tagsInput
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean),
+    notes: notesInput?.trim() || undefined,
+    isFavorite: isFavoriteInput,
+  };
+
+  // Optimistic update
+  setIsBookmarkMutating(true);
+  setIsBookmarkModalOpen(false);
+
+  const prevBookmarked = isBookmarked;
+  setIsBookmarked(true);
+  toast.message("Adding to bookmarks...", { description: "This is an optimistic update." });
+
+  dispatch(CreateBookMark(payload as any))
+    .unwrap()
+    .then(() => {
+      toast.success("Added to bookmarks");
+      // Clear inputs
+      setTagsInput("");
+      setNotesInput("");
+      setIsFavoriteInput(false);
+    })
+    .catch(() => {
+      setIsBookmarked(prevBookmarked); // revert if API fails
+      toast.error("Failed to add to bookmarks");
+    })
+    .finally(() => {
+      setIsBookmarkMutating(false);
+    });
+};
+
+  const handleRemoveBookmark = () => {
+    if (!roadmapId) return;
+
+    setIsBookmarkMutating(true);
+    setIsRemoveConfirmOpen(false);
+
+    const prevBookmarked = isBookmarked;
+    setIsBookmarked(false); // optimistic update
+    toast.message("Removing bookmark...", { description: "This is an optimistic update." });
+
+    dispatch(deleteBookmark(roadmapId))
+      .unwrap()
+      .then(() => {
+        toast.success("Removed from bookmarks");
+      })
+      .catch(() => {
+        setIsBookmarked(prevBookmarked); // revert if API fails
+        toast.error("Failed to remove bookmark");
+      })
+      .finally(() => {
+        setIsBookmarkMutating(false);
+      });
   };
 
   // 👉 Now conditionally render after all hooks
   if (!RoadmapDetails) {
-    return <p>Loading roadmap...</p>;
+    return <p>Loading roadmap...</p>
   }
 
-  const nodes = RoadmapDetails.nodes || [];
-  const roadmap = RoadmapDetails.roadmap || {};
+  const nodes = RoadmapDetails.nodes || []
+  const roadmap = RoadmapDetails.roadmap || {}
 
   const getNodeProgress = (nodeId: string): INodeProgressResponse | undefined => {
     return userProgress?.nodes?.find((progress) => progress.node._id === nodeId)
@@ -540,7 +666,6 @@ export default function RoadmapDetailsPage() {
                       key={node._id}
                       node={node}
                       nodeProgress={getNodeProgress(node._id)}
-
                       roadmapId={roadmapId}
                     />
                   ))}
@@ -565,9 +690,29 @@ export default function RoadmapDetailsPage() {
                 <Button className="w-full" onClick={startProgress} disabled={isLoading}>
                   {userProgress && userProgress.stats.completedNodes > 0 ? "Continue Learning" : "Start Learning"}
                 </Button>
-                <Button variant="outline" className="w-full bg-transparent">
-                  Save to Favorites
-                </Button>
+
+                {!isBookmarked ? (
+                  <Button
+                    variant="outline"
+                    className="w-full bg-transparent"
+                    onClick={() => setIsBookmarkModalOpen(true)}
+                    disabled={isBookmarkMutating}
+                  >
+                    <BookmarkPlus className="mr-2 h-4 w-4" />
+                    Add to Bookmarks
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full bg-transparent text-red-500 border-red-500/40 hover:text-red-400"
+                    onClick={() => setIsRemoveConfirmOpen(true)}
+                    disabled={isBookmarkMutating}
+                  >
+                    <BookmarkMinus className="mr-2 h-4 w-4" />
+                    Remove Bookmark
+                  </Button>
+                )}
+
                 <Button variant="outline" className="w-full bg-transparent">
                   Share Roadmap
                 </Button>
@@ -576,6 +721,70 @@ export default function RoadmapDetailsPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={isBookmarkModalOpen} onOpenChange={setIsBookmarkModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add to bookmarks</DialogTitle>
+            <DialogDescription>
+              Provide optional details before saving this roadmap to your bookmarks.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="tags">Tags (comma separated)</Label>
+              <Input
+                id="tags"
+                placeholder="frontend, react, career"
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                placeholder="Why this roadmap is useful or how you'll approach it..."
+                value={notesInput}
+                onChange={(e) => setNotesInput(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="favorite">Mark as favorite</Label>
+              <Switch id="favorite" checked={isFavoriteInput} onCheckedChange={setIsFavoriteInput} />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBookmarkModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddBookmark} disabled={isBookmarkMutating || !roadmapId}>
+              Save Bookmark
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={isRemoveConfirmOpen} onOpenChange={setIsRemoveConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove bookmark?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This roadmap will be removed from your bookmarks. You can add it again anytime.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemoveBookmark} className="bg-red-500 hover:bg-red-600">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

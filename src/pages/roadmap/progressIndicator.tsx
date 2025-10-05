@@ -1,5 +1,6 @@
+import type { ProgressStatus } from "@/types/user/progress/UserProgress"
 import { CheckCircle2, Circle, Clock, X } from "lucide-react"
-import type { ProgressStatus } from "@/types/progress"
+// import type { ProgressStatus } from "@/types/progress"
 
 interface ProgressIndicatorProps {
   status: ProgressStatus

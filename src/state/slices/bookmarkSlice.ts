@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "@/helper/axiosInstance";
 import type { Bookmark } from "../../types/Bookmark/bookmark";
 import type { PayloadAction } from "@reduxjs/toolkit";
+import type { IBookmarkRequest } from "@/pages/roadmap/getroadmapdetails-page";
 
 interface BookmarkState {
   bookmarks: Bookmark[];
@@ -28,6 +29,36 @@ export const fetchBookmarks = createAsyncThunk(
     }
   }
 );
+export const CreateBookMark = createAsyncThunk(
+  "bookmarks/createBookMark",
+  async (data: IBookmarkRequest, thunkAPI) => {
+    try {
+      const response = await axiosInstance.post(`/api/bookmarks/create`, data, {
+        withCredentials: true,
+      });
+      return response.data as Bookmark[];
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data || "failed to create bookmark"
+      );
+    }
+  }
+);
+export const checkIsBookMarked = createAsyncThunk(
+  "bookmarks/checkIsBookMarked",
+  async (id: string, thunkAPI) => {
+    try {
+      const response = await axiosInstance.get(`/api/bookmarks/check/${id}`, {
+        withCredentials: true,
+      });
+      return response.data as { isBookmarked: boolean };
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data || "failed to check  bookmark"
+      );
+    }
+  }
+);
 
 export const upsertBookmark = createAsyncThunk(
   "bookmarks/upsertBookmark",
@@ -45,13 +76,12 @@ export const upsertBookmark = createAsyncThunk(
 
 export const deleteBookmark = createAsyncThunk(
   "bookmark/deleteBookmark",
-  async (
-    { userId, roadmapId }: { userId: string; roadmapId: string },
-    thunkAPI
-  ) => {
+  async (roadmapId: string, thunkAPI) => {
     try {
-      await axiosInstance.delete(`/api/bookmarks/${userId}/${roadmapId}`);
-      return roadmapId;
+      const response = axiosInstance.delete(`/api/bookmarks/${roadmapId}`, {
+        withCredentials: true,
+      });
+      return (await response).data;
     } catch (error: any) {
       return thunkAPI.rejectWithValue(
         error.response?.data || "Failed to delete bookmark"

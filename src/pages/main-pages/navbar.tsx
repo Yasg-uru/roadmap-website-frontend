@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import LogoutButton from '@/components/LogoutButton';
+import ProfileDropdown from '@/components/ProfileDropdown';
+import { useAuth } from '@/contexts/authContext';
 import { 
   Route,
   Menu,
@@ -7,7 +10,8 @@ import {
   TrendingUp,
   CalendarDays,
   User,
-  Settings
+  Settings,
+  BookOpen
 } from 'lucide-react';
 
 interface NavItem {
@@ -20,14 +24,17 @@ interface NavItem {
 const Navbar: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
 
   const navItems: NavItem[] = [
     { id: 1, name: 'Home', icon: <Home className="w-5 h-5" />, path: '/' },
     { id: 2, name: 'Roadmaps', icon: <Route className="w-5 h-5" />, path: '/roadmaps' },
-    { id: 3, name: 'Progress', icon: <TrendingUp className="w-5 h-5" />, path: '/progress' },
-    // { id: 4, name: 'Timeline', icon: <CalendarDays className="w-5 h-5" />, path: '/timeline' },
-    { id: 5, name: 'Profile', icon: <User className="w-5 h-5" />, path: '/profile' },
-    // { id: 6, name: 'Settings', icon: <Settings className="w-5 h-5" />, path: '/settings' },
+    { id: 3, name: 'Resources', icon: <BookOpen className="w-5 h-5" />, path: '/resources' },
+    { id: 4, name: 'Progress', icon: <TrendingUp className="w-5 h-5" />, path: '/progress' },
+    // { id: 5, name: 'Timeline', icon: <CalendarDays className="w-5 h-5" />, path: '/timeline' },
+    { id: 6, name: 'Profile', icon: <User className="w-5 h-5" />, path: '/profile' },
+    // { id: 7, name: 'Settings', icon: <Settings className="w-5 h-5" />, path: '/settings' },
   ];
 
   useEffect(() => {
@@ -66,17 +73,31 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex space-x-6">
-            {navItems.map((item) => (
+          <div className="hidden md:flex space-x-6 items-center">
+            {navItems
+              .filter(item => item.name !== 'Profile')
+              .map((item) => (
+                <a
+                  key={item.id}
+                  href={item.path}
+                  className="flex items-center text-[#E2E8F0] hover:text-[#3B82F6] transition-colors"
+                >
+                  <span className="mr-2">{item.icon}</span>
+                  {item.name}
+                </a>
+              ))}
+            {isAuthenticated ? (
+              <>
+                <ProfileDropdown />
+              </>
+            ) : (
               <a
-                key={item.id}
-                href={item.path}
-                className="flex items-center text-[#E2E8F0] hover:text-[#3B82F6] transition-colors"
+                href="/login"
+                className="px-4 py-2 bg-[#2563EB] text-white rounded hover:bg-[#1D4ED8] ml-4"
               >
-                <span className="mr-2">{item.icon}</span>
-                {item.name}
+                Login
               </a>
-            ))}
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -99,17 +120,30 @@ const Navbar: React.FC = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden mt-4 pb-4">
             <div className="flex flex-col space-y-3">
-              {navItems.map((item) => (
+              {navItems
+                .filter(item => item.name !== 'Profile')
+                .map((item) => (
+                  <a
+                    key={item.id}
+                    href={item.path}
+                    className="flex items-center px-4 py-2 text-[#E2E8F0] hover:bg-[#1E293B] hover:text-[#3B82F6] rounded-lg transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span className="mr-3">{item.icon}</span>
+                    {item.name}
+                  </a>
+                ))}
+              {isAuthenticated ? (
+                <ProfileDropdown />
+              ) : (
                 <a
-                  key={item.id}
-                  href={item.path}
-                  className="flex items-center px-4 py-2 text-[#E2E8F0] hover:bg-[#1E293B] hover:text-[#3B82F6] rounded-lg transition-colors"
+                  href="/login"
+                  className="px-4 py-2 bg-[#2563EB] text-white rounded hover:bg-[#1D4ED8] mt-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <span className="mr-3">{item.icon}</span>
-                  {item.name}
+                  Login
                 </a>
-              ))}
+              )}
             </div>
           </div>
         )}

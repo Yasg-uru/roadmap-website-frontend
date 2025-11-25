@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CircularProgress } from "./components/circular-progress"
-import { BookmarkedResources } from "./components/bookmarked-resources"
+import { BookmarkedRoadmaps } from "./components/bookmarked-resources"
 import { CompletedSteps } from "./components/completed-steps"
 import { RecentlyViewed } from "./components/recently-viewd"
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch"
@@ -52,7 +52,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Bookmarked Resources */}
                     <div className="lg:col-span-2">
-                        <BookmarkedResources />
+                        <BookmarkedRoadmaps />
                     </div>
 
                     {/* Right Column */}

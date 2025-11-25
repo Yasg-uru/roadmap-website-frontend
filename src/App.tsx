@@ -1,5 +1,6 @@
 
 import { Route, Routes } from "react-router-dom"
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Signup from "./pages/authpages/register-user"
 import Verify from "./pages/authpages/otp-verify"
 import Login from "./pages/authpages/login"
@@ -10,6 +11,7 @@ import Roadmaps from "./pages/roadmap/roadmaps"
 import Home from "./pages/main-pages/home-page"
 import Roadmap from "./pages/main-pages/roadmap.example"
 import RoadmapDetails from "./pages/roadmap/roadmap-details"
+import Resources from "./pages/resources"
 import { useEffect } from "react"
 import { socket } from "./helper/useSocket"
 import { useAuth } from "./contexts/authContext"
@@ -38,9 +40,14 @@ function App() {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
 
         <Route path="/roadmaps" element={<Roadmaps />} />
+        <Route path="/resources" element={<Resources />} />
         <Route path="/details/:roadmapId" element={<RoadmapDetailsPage />} />
         <Route path="/generate-roadmap" element={<GenerateRoadmap />} />
-        <Route path="/progress" element={<Dashboard />} />
+        <Route path="/progress" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
 
       </Routes>
     </>

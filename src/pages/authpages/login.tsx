@@ -41,8 +41,7 @@ const Login: React.FC = () => {
         toast.success("Successfully Logged In", {
           description: "Logged in successfully. Explore courses and register.",
         });
-
-        navigate("/");
+        window.location.reload();
       })
       .catch((error: any) => {
         toast.error("Login Error", {

@@ -66,11 +66,12 @@ export const logoutUser = createAsyncThunk<any, void, { rejectValue: string }>(
   "auth/logoutUser",
   async (_, { rejectWithValue }) => {
     try {
-      const { data } = await axios.get(`/user/logout`, {
+      const { data } = await axiosInstance.post(`/user/logout`, {
         withCredentials: true,
       });
       return data;
     } catch (error: any) {
+      console.log('error inside logout : ', error)
       return rejectWithValue(error.response?.data?.message || error.message);
     }
   }

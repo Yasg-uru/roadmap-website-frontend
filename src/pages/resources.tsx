@@ -109,7 +109,7 @@ const Resources: React.FC = () => {
               {filteredResources.map((resource: Resource) => (
                 <Card
                   key={resource._id}
-                  onClick={() => navigate(`/resource/${resource._id}`)}
+                  onClick={() => navigate(`/resources/${resource._id}`)}
                   className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm hover:bg-slate-700/50 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/10 group cursor-pointer"
                 >
                   <CardHeader className="space-y-3">

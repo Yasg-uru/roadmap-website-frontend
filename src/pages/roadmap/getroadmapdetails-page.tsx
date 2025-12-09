@@ -503,12 +503,14 @@ export default function RoadmapDetailsPage() {
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false)
 
   useEffect(() => {
-    if (RoadmapDetails?.roadmap._id) {
-      dispatch(checkIsBookMarked(RoadmapDetails.roadmap._id)).unwrap().then((res) => {
+    // Handle both structures: direct roadmap or nested { roadmap, nodes }
+    const roadmapId = RoadmapDetails?.roadmap?._id || RoadmapDetails?._id
+    if (roadmapId) {
+      dispatch(checkIsBookMarked(roadmapId)).unwrap().then((res) => {
         setIsBookmarked(res.isBookmarked)
       })
     }
-  }, [RoadmapDetails])
+  }, [RoadmapDetails, dispatch])
 
   useEffect(() => {
     if (progress) setUserProgress(progress)
@@ -623,8 +625,9 @@ const handleAddBookmark = () => {
     return <p>Loading roadmap...</p>
   }
 
+  // Handle both structures: direct roadmap or nested { roadmap, nodes }
   const nodes = RoadmapDetails.nodes || []
-  const roadmap = RoadmapDetails.roadmap || {}
+  const roadmap = RoadmapDetails.roadmap || RoadmapDetails
 
   const getNodeProgress = (nodeId: string): INodeProgressResponse | undefined => {
     return userProgress?.nodes?.find((progress) => progress.node._id === nodeId)

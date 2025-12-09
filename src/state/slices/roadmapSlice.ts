@@ -34,16 +34,24 @@ export const getRoadMapDetails = createAsyncThunk(
     }
   }
 );
-export const generateRoadmap= createAsyncThunk("roadmap/generateroadmap", async (prompt:string ,{rejectWithValue})=>{
-  try {
-    const response = await axiosInstance.post("/roadmap/generate", {
-      userPrompt:prompt
-    },{withCredentials:true});
-    return response.data;
-  } catch (error:any) {
-    return rejectWithValue(error.response?.data?.message || error.message);
+export const generateRoadmap = createAsyncThunk(
+  "roadmap/generateroadmap",
+  async (payload: { prompt: string; isCommunityContributed?: boolean }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post(
+        "/roadmap/generate",
+        {
+          userPrompt: payload.prompt,
+          isCommunityContributed: payload.isCommunityContributed || false,
+        },
+        { withCredentials: true }
+      );
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
   }
-})
+)
 export const roadmapSlice = createSlice({
   name: "roadmap",
   initialState,
@@ -60,14 +68,26 @@ export const roadmapSlice = createSlice({
         state.isLoading = false;
         state.roadmaps = action.payload?.roadmaps || [];
         state.paginationMeta = action.payload?.paginationMeta || null;
-      }).addCase(getRoadMapDetails.pending, (state)=>{
-        state.isLoading= true;
-        
-      }).addCase(getRoadMapDetails.rejected,(state)=>{
-        state.isLoading= false;
-      }).addCase(getRoadMapDetails.fulfilled,(state, action)=>{
-        state.isLoading= false;
-        state.roadmap= action.payload || null;
+      })
+      .addCase(getRoadMapDetails.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getRoadMapDetails.rejected, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(getRoadMapDetails.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.roadmap = action.payload || null;
+      })
+      .addCase(generateRoadmap.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(generateRoadmap.rejected, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(generateRoadmap.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.roadmap = action.payload || null;
       })
   },
 });

@@ -1,4 +1,3 @@
-
 import { Route, Routes } from "react-router-dom"
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Signup from "./pages/authpages/register-user"
@@ -18,6 +17,7 @@ import { useAuth } from "./contexts/authContext"
 import GenerateRoadmap from "./pages/roadmap-generation/generate-roadmap"
 import RoadmapDetailsPage from "./pages/roadmap/getroadmapdetails-page"
 import Dashboard from "./pages/Analytics/main"
+import ResourceDetails from "@/pages/resource-details";
 
 
 function App() {
@@ -48,7 +48,7 @@ function App() {
             <Dashboard />
           </ProtectedRoute>
         } />
-
+        <Route path="/resources/:id" element={<ResourceDetails />} />
       </Routes>
     </>
   )

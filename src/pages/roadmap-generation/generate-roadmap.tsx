@@ -24,11 +24,15 @@ import {
   Calendar,
   User,
 } from "lucide-react"
-import { socket } from "@/helper/useSocket"
+import { socket, registerUserSocket, connectSocket } from "@/helper/useSocket"
 import { useAppDispatch } from "@/hooks/useAppDispatch"
+import type { RootState } from "@/state/store"
+import { useSelector } from "react-redux"
 import { generateRoadmap } from "@/state/slices/roadmapSlice"
 import type { IRoadmap } from "@/types/user/roadmap/roadmap.types"
 import { toast } from "sonner"
+import { useNavigate } from "react-router-dom"
+import { useAuth } from "@/contexts/authContext"
 
 interface ProgressType {
   step: string
@@ -37,14 +41,16 @@ interface ProgressType {
 }
 
 const progressSteps = [
+  { key: "searching", label: "Searching existing roadmaps", icon: Target },
   { key: "analyzing", label: "Analyzing prompt", icon: Target },
   { key: "researching", label: "Researching content", icon: BookOpen },
   { key: "structuring", label: "Structuring roadmap", icon: TrendingUp },
   { key: "generating", label: "Generating details", icon: Sparkles },
   { key: "finalizing", label: "Finalizing roadmap", icon: CheckCircle },
+  { key: "complete", label: "Complete", icon: CheckCircle },
 ]
 
-const categoryColors = {
+const categoryColors: Record<string, string> = {
   frontend: "bg-blue-500",
   backend: "bg-green-500",
   devops: "bg-orange-500",
@@ -53,6 +59,7 @@ const categoryColors = {
   design: "bg-indigo-500",
   "product-management": "bg-yellow-500",
   cybersecurity: "bg-red-500",
+  "cyber-security": "bg-red-500",
   cloud: "bg-cyan-500",
   blockchain: "bg-emerald-500",
   other: "bg-gray-500",
@@ -67,6 +74,8 @@ const difficultyColors = {
 
 const GenerateRoadmap: React.FC = () => {
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+  const {user}= useAuth()
   const [prompt, setPrompt] = useState<string>("")
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [currentProgress, setCurrentProgress] = useState<ProgressType | null>(null)
@@ -74,7 +83,17 @@ const GenerateRoadmap: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<number>(0)
 
   useEffect(() => {
+    // Connect socket when component mounts
+    connectSocket()
+
+    // Register user with socket if authenticated
+    if (user?._id) {
+      registerUserSocket(user._id)
+    }
+
+    // Listen for progress updates
     socket.on("roadmap-progress", ({ step, progress, error }: ProgressType) => {
+      console.log('Progress update:', { step, progress, error })
       setCurrentProgress({ step, progress, error })
 
       const stepIndex = progressSteps.findIndex((s) => s.key === step)
@@ -82,20 +101,33 @@ const GenerateRoadmap: React.FC = () => {
         setCurrentStep(stepIndex)
       }
 
-      if (error) {
+      if (error && !error.includes('Searching') && !error.includes('Checking')) {
         toast.error(`Error: ${error}`)
         setIsGenerating(false)
+      }
+      
+      // Handle completion
+      if (step === 'complete' || progress === 100) {
+        setTimeout(() => {
+          setIsGenerating(false)
+        }, 1000)
       }
     })
 
     return () => {
       socket.off("roadmap-progress")
     }
-  }, [])
+  }, [user])
 
   const handleSubmit = async () => {
     if (prompt.trim() === "") {
-      toast.error("Prompt is required")
+      toast.error("Please enter a description of what you want to learn")
+      return
+    }
+
+    if (!user) {
+      toast.error("Please login to generate roadmaps")
+      navigate("/login")
       return
     }
 
@@ -105,12 +137,25 @@ const GenerateRoadmap: React.FC = () => {
     setCurrentStep(0)
 
     try {
-      const data = await dispatch(generateRoadmap(prompt)).unwrap()
+      const data = await dispatch(
+        generateRoadmap({ 
+          prompt, 
+          isCommunityContributed: false 
+        })
+      ).unwrap()
+      
       setGeneratedRoadmap(data)
       toast.success("Roadmap generated successfully!")
+      
+      // Navigate to the generated roadmap after a short delay
+      setTimeout(() => {
+        if (data._id) {
+          navigate(`/details/${data._id}`)
+        }
+      }, 2000)
     } catch (error) {
+      console.error('Generation error:', error)
       toast.error(typeof error === "string" ? error : "Failed to generate roadmap")
-    } finally {
       setIsGenerating(false)
     }
   }

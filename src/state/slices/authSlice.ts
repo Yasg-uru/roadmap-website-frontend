@@ -16,7 +16,8 @@ export const registerUser = createAsyncThunk<
     formData.append("email", userData.email);
     formData.append("password", userData.password);
     if (userData.profileFile) {
-      formData.append("file", userData.profileFile);
+      // backend expects the upload field name `profileUrl` (multer.single('profileUrl'))
+      formData.append("profileUrl", userData.profileFile);
     }
 
     const { data } = await axiosInstance.post(`user/register`, formData, {
@@ -84,7 +85,7 @@ export const forgotPassword = createAsyncThunk<
   { rejectValue: string }
 >("auth/forgotPassword", async (emailData, { rejectWithValue }) => {
   try {
-    const { data } = await axios.post(`/user/forgot-password`, emailData, {
+    const { data } = await axiosInstance.post(`/user/forgot-password`, emailData, {
       headers: { "Content-Type": "application/json" },
     });
     return data;
@@ -100,7 +101,7 @@ export const resetPassword = createAsyncThunk<
   { rejectValue: string }
 >("auth/resetPassword", async ({ token, password }, { rejectWithValue }) => {
   try {
-    const { data } = await axios.post(
+    const { data } = await axiosInstance.put(
       `/user/reset-password/${token}`,
       { password },
       { headers: { "Content-Type": "application/json" } }

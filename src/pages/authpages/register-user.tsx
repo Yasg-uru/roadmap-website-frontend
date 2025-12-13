@@ -136,7 +136,7 @@ const Signup: React.FC = () => {
           <span className="text-sm text-[#E2E8F0]">
             Already have an account?{" "}
             <Link
-              to="/Login"
+              to="/login"
               className="text-[#60A5FA] hover:underline"
             >
               Login here

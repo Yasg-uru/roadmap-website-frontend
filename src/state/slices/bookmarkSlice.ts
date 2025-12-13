@@ -18,9 +18,10 @@ const initialState: BookmarkState = {
 
 export const fetchBookmarks = createAsyncThunk(
   "bookmarks/fetchBookmarks",
-  async (userId: string, thunkAPI) => {
+  async (_, thunkAPI) => {
     try {
-      const response = await axiosInstance.get(`/api/bookmarks/${userId}`);
+      // backend reads the authenticated user from req.user, so call root endpoint
+      const response = await axiosInstance.get(`/api/bookmarks`, { withCredentials: true });
       return response.data as Bookmark[];
     } catch (error: any) {
       return thunkAPI.rejectWithValue(

@@ -55,6 +55,7 @@ import { useParams } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch"
 import { getRoadMapDetails } from "@/state/slices/roadmapSlice"
 import { fetchUserProgress, startRoadmap, updateUserProgress } from "@/state/slices/userProgressSlice"
+import axiosInstance from "@/helper/axiosInstance"
 import { toast } from "sonner"
 import type {
   ImportanceLevel,
@@ -521,6 +522,9 @@ export default function RoadmapDetailsPage() {
 
     dispatch(getRoadMapDetails(roadmapId))
       .then(() => {
+        // record recently viewed on backend
+        axiosInstance.post('/api/recently-viewed', { roadmapId }).catch(() => {})
+
         dispatch(fetchUserProgress(roadmapId))
           .then(() => toast.success("Fetched user progress successfully"))
           .catch(() => toast.error("Failed to fetch the user progress"))

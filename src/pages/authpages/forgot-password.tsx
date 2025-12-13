@@ -52,11 +52,9 @@ const ForgotPassword: React.FC = () => {
 
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md dark:bg-gray-800">
-        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-gray-200">
-          Forgot Password
-        </h2>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-[#0F172A] to-[#020617]">
+      <div className="w-full max-w-md p-8 rounded-lg shadow-md bg-[#1E293B] hover:bg-[#0F172A] transition-colors duration-300">
+        <h2 className="text-2xl font-bold mb-6 text-center text-[#60A5FA]">Forgot Password</h2>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
@@ -64,14 +62,14 @@ const ForgotPassword: React.FC = () => {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <FormLabel className="text-sm font-medium text-[#E2E8F0]">
                     Email
                   </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Enter your email"
                       type="email"
-                      className="border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:focus:ring-indigo-400 dark:placeholder-gray-400"
+                      className="border-[#1E293B] rounded-md shadow-sm focus:ring-[#3B82F6] bg-[#0F172A] focus:ring-2 text-[#E2E8F0] placeholder-[#64748B]"
                       {...field}
                     />
                   </FormControl>
@@ -82,7 +80,7 @@ const ForgotPassword: React.FC = () => {
             {!isBackToLogin ? (
               <Button
                 type="submit"
-                className="w-full py-2 bg-indigo-600 text-white rounded-md shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-600 dark:focus:ring-indigo-400"
+                className="w-full py-2 bg-[#2563EB] text-white rounded-md shadow hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               >
                 {isLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin" />
@@ -93,8 +91,8 @@ const ForgotPassword: React.FC = () => {
             ) : (
               <Button
                 type="button"
-                onClick={() => navigate("/Login")}
-                className="w-full py-2 bg-indigo-600 text-white rounded-md shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-600 dark:focus:ring-indigo-400"
+                onClick={() => navigate("/login")}
+                className="w-full py-2 bg-[#2563EB] text-white rounded-md shadow hover:bg-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
               >
                 Back To Login
               </Button>

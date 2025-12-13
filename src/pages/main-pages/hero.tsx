@@ -2,12 +2,14 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Search, Network, Edit3, Download } from "lucide-react"
 import { motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 
 export default function HeroSection() {
   const [searchValue, setSearchValue] = useState("")
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
 const navigate = useNavigate();
 
   const containerVariants = {
@@ -73,16 +75,55 @@ const navigate = useNavigate();
               placeholder="Search a topic..."
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
+              onFocus={() => setIsSearchModalOpen(true)}
               className="w-full h-16 pl-6 pr-16 text-lg bg-[#1E293B] border-[#0F172A] text-white placeholder:text-[#E2E8F0]/60 rounded-xl focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all duration-300"
             />
             <motion.button
               className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 text-[#60A5FA] hover:text-[#3B82F6] transition-colors duration-200"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => setIsSearchModalOpen(true)}
             >
               <Search className="w-6 h-6" />
             </motion.button>
           </div>
+
+          {/* Modal search dialog */}
+          <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
+            <DialogContent className="max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Search Roadmaps</DialogTitle>
+                <DialogDescription>Enter keywords to find matching roadmaps.</DialogDescription>
+              </DialogHeader>
+
+              <div className="mt-4">
+                <Input
+                  autoFocus
+                  placeholder="Search roadmaps, tags, or descriptions..."
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setIsSearchModalOpen(false)
+                      navigate(`/roadmaps?q=${encodeURIComponent(searchValue)}`)
+                    }
+                  }}
+                  className="w-full h-14 pl-4 text-lg bg-[#0F172A] text-white rounded-md"
+                />
+
+                <div className="flex justify-end mt-4">
+                  <Button
+                    onClick={() => {
+                      setIsSearchModalOpen(false)
+                      navigate(`/roadmaps?q=${encodeURIComponent(searchValue)}`)
+                    }}
+                  >
+                    Search
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </motion.div>
 
         <motion.div className="flex flex-col sm:flex-row gap-4 justify-center items-center" variants={itemVariants}>
@@ -99,7 +140,7 @@ const navigate = useNavigate();
           </motion.div>
 
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button
+            <Button onClick={()=>navigate("/roadmaps")}
               size="lg"
               variant="outline"
               className="h-14 px-8 text-lg font-semibold bg-transparent border-2 border-[#3B82F6] text-[#3B82F6] hover:bg-[#3B82F6] hover:text-white rounded-xl transition-all duration-300"

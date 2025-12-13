@@ -6,11 +6,13 @@ import { CompletedSteps } from "./components/completed-steps"
 import { RecentlyViewed } from "./components/recently-viewd"
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch"
 import { useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { getUserRoadmapProgressForDashBoard } from "@/state/slices/userProgressSlice"
 
 export default function Dashboard() {
     const dispatch = useAppDispatch();
     const { userCourseProgress, loading } = useAppSelector((state) => state.userProgress);
+    const navigate = useNavigate();
 
     useEffect(() => {
         dispatch(getUserRoadmapProgressForDashBoard()).unwrap();
@@ -40,6 +42,7 @@ export default function Dashboard() {
                                 <Button
                                     variant="outline"
                                     className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900 bg-transparent"
+                                    onClick={() => navigate(`/details/${course.id}`)}
                                 >
                                     Resume
                                 </Button>

@@ -30,7 +30,7 @@ import {
   Coins,
   MoreHorizontal,
 } from "lucide-react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import type { IRoadmap } from "@/types/user/roadmap/roadmap.types"
 
 
@@ -126,6 +126,18 @@ const Roadmaps: React.FunctionComponent = () => {
   const [sortBy, setSortBy] = useState<string>("newest")
 
   const { roadmaps, isLoading, paginationMeta } = useAppSelector((state) => state.roadmap)
+
+  const location = useLocation();
+
+  // Initialize searchTerm from query param 'q'
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const q = params.get("q") || ""
+    if (q !== searchTerm) {
+      setSearchTerm(q)
+      setPage(1)
+    }
+  }, [location.search])
 
   // Filter and sort roadmaps
   const filteredAndSortedRoadmaps = useMemo(() => {

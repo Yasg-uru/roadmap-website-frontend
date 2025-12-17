@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch";
 import { fetchResourceById, upvoteResource, downvoteResource } from "@/state/slices/resourceSlice";
 import { checkResourceBookmarked, createResourceBookmark, deleteResourceBookmark } from "@/state/slices/resourceBookmarkSlice";
@@ -383,6 +384,8 @@ function ResourceStats({ resource }: ResourceStatsProps) {
 const ResourceDetails: React.FC = () => {
   const { id } = useParams();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { resource, loading, error } = useAppSelector((state) => state.resource);
   const {user}= useAuth();
   const [hasUpvoted, setHasUpvoted] = useState(false);
@@ -431,6 +434,7 @@ const ResourceDetails: React.FC = () => {
   const handleUpvote = () => {
     if (!user) {
       toast.error("Please login to upvote this resource");
+      navigate("/login", { state: { from: location } });
       return;
     }
     if (!resource._id || upvoteLoading) return;
@@ -459,6 +463,7 @@ const ResourceDetails: React.FC = () => {
   const handleDownvote = () => {
     if (!user) {
       toast.error("Please login to downvote this resource");
+      navigate("/login", { state: { from: location } });
       return;
     }
     if (!resource._id || downvoteLoading) return;
@@ -487,6 +492,7 @@ const ResourceDetails: React.FC = () => {
   const handleAddBookmark = () => {
     if (!user) {
       toast.error("Please login to bookmark this resource");
+      navigate("/login", { state: { from: location } });
       return;
     }
     if (!resource._id) return;
@@ -518,6 +524,11 @@ const ResourceDetails: React.FC = () => {
   };
 
   const handleRemoveBookmark = () => {
+    if (!user) {
+      toast.error("Please login to manage bookmarks");
+      navigate("/login", { state: { from: location } });
+      return;
+    }
     if (!resource._id) return;
     setBookmarkLoading(true);
     setIsRemoveConfirmOpen(false);

@@ -51,12 +51,13 @@ import {
   BookmarkMinus,
 } from "lucide-react"
 
-import { useParams } from "react-router-dom"
+import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch"
 import { getRoadMapDetails } from "@/state/slices/roadmapSlice"
 import { fetchUserProgress, startRoadmap, updateUserProgress } from "@/state/slices/userProgressSlice"
 import axiosInstance from "@/helper/axiosInstance"
 import { toast } from "sonner"
+import { useAuth } from "@/contexts/authContext"
 import type {
   ImportanceLevel,
   NodeDifficulty,
@@ -245,16 +246,25 @@ const NodeCard = ({
 
   depth = 0,
   roadmapId,
+  isAuthenticated,
+  navigate,
 }: {
   node: RoadmapNode
   nodeProgress?: INodeProgressResponse
   depth?: number
   roadmapId?: string
+  isAuthenticated?: boolean
+  navigate?: (path: string) => void
 }) => {
   const [isExpanded, setIsExpanded] = useState(depth < 2)
   const currentStatus = nodeProgress?.status || "not_started"
   const dispatch = useAppDispatch()
   const handleProgressChange = (status: ProgressStatus) => {
+    if (!isAuthenticated) {
+      toast.error("Please login to track your progress")
+      navigate?.("/login")
+      return
+    }
     dispatch(updateUserProgress({ roadmapId: roadmapId ?? "", nodeId: node._id, status }))
       .unwrap()
       .then(() => {
@@ -381,6 +391,8 @@ const NodeCard = ({
               nodeProgress={nodeProgress}
               depth={depth + 1}
               roadmapId={roadmapId}
+              isAuthenticated={isAuthenticated}
+              navigate={navigate}
             />
           ))}
         </div>
@@ -487,6 +499,9 @@ const ReviewsSection = ({ reviews }: { reviews: Review[] }) => (
 export default function RoadmapDetailsPage() {
   const { roadmapId } = useParams<{ roadmapId: string }>()
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { isAuthenticated } = useAuth()
 
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const { roadmap: RoadmapDetails } = useAppSelector((state) => state.roadmap)
@@ -556,6 +571,12 @@ export default function RoadmapDetailsPage() {
   const startProgress = () => {
     if (!roadmapId) return
 
+    if (!isAuthenticated) {
+      toast.error("Please login to start learning")
+      navigate("/login", { state: { from: location } })
+      return
+    }
+
     dispatch(startRoadmap(roadmapId))
       .unwrap()
       .then(() => toast.success("Roadmap started successfully"))
@@ -563,6 +584,12 @@ export default function RoadmapDetailsPage() {
   }
 const handleAddBookmark = () => {
   if (!roadmapId) return;
+
+  if (!isAuthenticated) {
+    toast.error("Please login to bookmark this roadmap")
+    navigate("/login", { state: { from: location } })
+    return
+  }
 
   const payload: IBookmarkRequest = {
     roadmap: roadmapId,
@@ -602,6 +629,12 @@ const handleAddBookmark = () => {
 
   const handleRemoveBookmark = () => {
     if (!roadmapId) return;
+
+    if (!isAuthenticated) {
+      toast.error("Please login to manage bookmarks")
+      navigate("/login", { state: { from: location } })
+      return
+    }
 
     setIsBookmarkMutating(true);
     setIsRemoveConfirmOpen(false);
@@ -674,6 +707,8 @@ const handleAddBookmark = () => {
                       node={node}
                       nodeProgress={getNodeProgress(node._id)}
                       roadmapId={roadmapId}
+                      isAuthenticated={isAuthenticated}
+                      navigate={navigate}
                     />
                   ))}
                 </div>

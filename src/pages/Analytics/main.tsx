@@ -2,7 +2,6 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CircularProgress } from "./components/circular-progress"
 import { BookmarkedRoadmaps } from "./components/bookmarked-resources"
-import { CompletedSteps } from "./components/completed-steps"
 import { RecentlyViewed } from "./components/recently-viewd"
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch"
 import { useEffect } from "react"
@@ -60,7 +59,6 @@ export default function Dashboard() {
 
                     {/* Right Column */}
                     <div className="space-y-6">
-                        <CompletedSteps />
                         <RecentlyViewed />
                     </div>
                 </div>

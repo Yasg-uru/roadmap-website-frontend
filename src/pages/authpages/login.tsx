@@ -15,7 +15,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/authContext";
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch";
 import { toast } from "sonner";
 import { loginUser } from "@/state/slices/authSlice";
@@ -24,6 +25,8 @@ const Login: React.FC = () => {
   const dispatch = useAppDispatch();
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const { refreshUser } = useAuth();
   const { isLoading } = useAppSelector((state) => state.auth);
 
   const form = useForm<z.infer<typeof LoginFormSchema>>({
@@ -35,13 +38,18 @@ const Login: React.FC = () => {
   });
 
   const onSubmit = (data: z.infer<typeof LoginFormSchema>) => {
+    const from = (location.state as any)?.from?.pathname || "/";
     dispatch(loginUser(data))
       .unwrap()
-      .then(() => {
+      .then(async () => {
         toast.success("Successfully Logged In", {
-          description: "Logged in successfully. Explore courses and register.",
+          description: "Logged in successfully.",
         });
-        window.location.reload();
+        // refresh auth context user (will silently fail if not available)
+        try {
+          await refreshUser();
+        } catch (e) {}
+        navigate(from, { replace: true });
       })
       .catch((error: any) => {
         toast.error("Login Error", {

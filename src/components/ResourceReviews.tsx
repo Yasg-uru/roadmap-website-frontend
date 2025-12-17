@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/hooks/useAppDispatch';
 import {
   fetchResourceReviews,
@@ -25,6 +26,7 @@ interface ResourceReviewsProps {
 
 const ResourceReviews: React.FC<ResourceReviewsProps> = ({ resourceId }) => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { resourceReviews } = useAppSelector((state) => state.resource);
 
@@ -103,6 +105,7 @@ const ResourceReviews: React.FC<ResourceReviewsProps> = ({ resourceId }) => {
   const handleSubmitReview = async () => {
     if (!user) {
       toast.error('Please login to submit a review');
+      navigate('/login');
       return;
     }
 

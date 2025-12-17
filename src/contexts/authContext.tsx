@@ -8,6 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: IUser | null;
   isLoading: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,12 +37,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const res = await axiosInstance.get("/user/me", { withCredentials: true });
+      setUser(res.data.user);
+      setIsAuthenticated(true);
+    } catch (err) {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  };
+
   useEffect(() => {
     fetchUser();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoading }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

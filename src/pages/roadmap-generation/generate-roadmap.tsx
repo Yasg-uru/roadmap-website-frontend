@@ -31,7 +31,7 @@ import { useSelector } from "react-redux"
 import { generateRoadmap } from "@/state/slices/roadmapSlice"
 import type { IRoadmap } from "@/types/user/roadmap/roadmap.types"
 import { toast } from "sonner"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/contexts/authContext"
 
 interface ProgressType {
@@ -75,6 +75,7 @@ const difficultyColors = {
 const GenerateRoadmap: React.FC = () => {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const {user}= useAuth()
   const [prompt, setPrompt] = useState<string>("")
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
@@ -127,7 +128,7 @@ const GenerateRoadmap: React.FC = () => {
 
     if (!user) {
       toast.error("Please login to generate roadmaps")
-      navigate("/login")
+      navigate("/login", { state: { from: location } })
       return
     }
 

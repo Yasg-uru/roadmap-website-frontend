@@ -87,7 +87,7 @@ export default function ReviewModal({
     if (!validateForm()) return;
 
     setIsSubmitting(true);
-    dispatch(createReview({ ...formData, rating: formData.rating ?? undefined })).unwrap().then(()=>{}).catch((error)=>{})
+    dispatch(createReview({ ...formData, rating: formData.rating ?? undefined })).unwrap().then(()=>{}).catch(()=>{})
     try {
       // Mock API call - replace with actual submission logic
       const reviewData = {

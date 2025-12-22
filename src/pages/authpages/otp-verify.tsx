@@ -22,7 +22,7 @@ import { Loader2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch";
 import { verifyUser } from "@/state/slices/authSlice";
-import { toast } from "sonner";
+// toast removed; not used in this component
 
 export const VerifyFormSchema = z.object({
   code: z.string().min(6, {
@@ -55,11 +55,8 @@ const Verify: React.FC = () => {
         // });
         navigate("/");
       })
-      .catch((error) => {
-        // toast({
-        //   title: error,
-        //   variant: "destructive",
-        // });
+      .catch(() => {
+        // Handle verification error (UI toast removed)
       });
   }
   

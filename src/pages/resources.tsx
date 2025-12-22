@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch";
 import { fetchResources } from "@/state/slices/resourceSlice";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";

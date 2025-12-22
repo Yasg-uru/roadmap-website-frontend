@@ -163,7 +163,7 @@ const authSlice = createSlice({
         state.user = null;
         state.isAuthenticated = false;
       })
-      .addCase(logoutUser.rejected, (state) => {})
+      .addCase(logoutUser.rejected, () => {})
 
       // Forgot Password
       .addCase(forgotPassword.pending, (state) => {

@@ -1,12 +1,5 @@
 import { Check, Clock, Settings } from "lucide-react"
 
-interface RoadmapItem {
-  title: string
-  type: "essential" | "optional" | "learn_anytime"
-  category: string
-  children?: RoadmapItem[]
-}
-
 // Props removed because `data` is currently unused in this component
 
 const getTypeIcon = (type: string) => {

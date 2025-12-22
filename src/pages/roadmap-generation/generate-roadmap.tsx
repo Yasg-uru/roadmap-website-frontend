@@ -26,8 +26,6 @@ import {
 } from "lucide-react"
 import { socket, registerUserSocket, connectSocket } from "@/helper/useSocket"
 import { useAppDispatch } from "@/hooks/useAppDispatch"
-import type { RootState } from "@/state/store"
-import { useSelector } from "react-redux"
 import { generateRoadmap } from "@/state/slices/roadmapSlice"
 import type { IRoadmap } from "@/types/user/roadmap/roadmap.types"
 import { toast } from "sonner"

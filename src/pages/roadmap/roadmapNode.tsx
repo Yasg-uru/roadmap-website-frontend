@@ -60,8 +60,8 @@ const RoadmapNode: React.FC<RoadmapNodeProps> = ({ data }) => {
           </Badge>
         )}
         
-        {data.difficulty && (
-          <Badge variant="outline">{data.difficulty}</Badge>
+        {data.metadata?.difficulty && (
+          <Badge variant="outline">{data.metadata.difficulty}</Badge>
         )}
         
         {data.isOptional && (

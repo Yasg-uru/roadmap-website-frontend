@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -503,7 +503,7 @@ export default function RoadmapDetailsPage() {
   const location = useLocation()
   const { isAuthenticated } = useAuth()
 
-  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [isLoading] = useState<boolean>(false)
   const { roadmap: RoadmapDetails } = useAppSelector((state) => state.roadmap)
   const { progress } = useAppSelector((state) => state.userProgress)
   const [userProgress, setUserProgress] = useState(progress)
@@ -520,7 +520,7 @@ export default function RoadmapDetailsPage() {
 
   useEffect(() => {
     // Handle both structures: direct roadmap or nested { roadmap, nodes }
-    const roadmapId = RoadmapDetails?.roadmap?._id || RoadmapDetails?._id
+    const roadmapId = (RoadmapDetails as any)?.roadmap?._id || (RoadmapDetails as any)?._id
     if (roadmapId) {
       dispatch(checkIsBookMarked(roadmapId)).unwrap().then((res) => {
         setIsBookmarked(res.isBookmarked)

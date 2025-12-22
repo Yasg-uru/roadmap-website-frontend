@@ -1,5 +1,4 @@
-import React from 'react'
-import { RoadmapGenerator } from './roadmap-generator'
+// removed unused imports
 
 import HeroSection from './hero'
 import ContactSupport from './contact-support'

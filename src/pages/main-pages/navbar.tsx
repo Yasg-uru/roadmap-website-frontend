@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import LogoutButton from '@/components/LogoutButton';
 import ProfileDropdown from '@/components/ProfileDropdown';
 import { useAuth } from '@/contexts/authContext';
 import { 
@@ -8,9 +7,8 @@ import {
   X,
   Home,
   TrendingUp,
-  CalendarDays,
+  
   User,
-  Settings,
   BookOpen
 } from 'lucide-react';
 
@@ -25,7 +23,6 @@ const Navbar: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { isAuthenticated } = useAuth();
-  const { user } = useAuth();
 
   const navItems: NavItem[] = [
     { id: 1, name: 'Home', icon: <Home className="w-5 h-5" />, path: '/' },

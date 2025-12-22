@@ -7,9 +7,7 @@ interface RoadmapItem {
   children?: RoadmapItem[]
 }
 
-interface RoadmapDetailsProps {
-  data?: RoadmapItem[]
-}
+// Props removed because `data` is currently unused in this component
 
 const getTypeIcon = (type: string) => {
   switch (type) {
@@ -37,7 +35,7 @@ const getTypeColor = (type: string) => {
   }
 }
 
- function RoadmapDetails({ data }: RoadmapDetailsProps) {
+ function RoadmapDetails() {
   return (
     <div className="relative w-full min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-8 overflow-hidden">
       {/* Background pattern */}

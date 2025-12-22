@@ -4,10 +4,10 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, Clock } from 'lucide-react';
-import type { NodeDetails } from '@/types/user/roadmap/roadmap-details';
+import type { RoadmapNode as RoadmapNodeType } from '@/types/user/roadmap/roadmap-details';
 
 interface RoadmapNodeProps {
-  data: NodeDetails & { 
+  data: RoadmapNodeType & { 
     isExpanded: boolean;
     onExpandToggle: () => void;
     onNodeClick: () => void;

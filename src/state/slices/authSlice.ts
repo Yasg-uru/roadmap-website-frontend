@@ -1,7 +1,6 @@
 import type { authState } from "@/types/user/authSlice.types";
 import { createSlice } from "@reduxjs/toolkit";
 
-import axios from "axios";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "@/helper/axiosInstance";
 
@@ -128,10 +127,10 @@ const authSlice = createSlice({
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(registerUser.fulfilled, (state, action) => {
+      .addCase(registerUser.fulfilled, (state) => {
         state.isLoading = false;
       })
-      .addCase(registerUser.rejected, (state, action) => {
+      .addCase(registerUser.rejected, (state) => {
         state.isLoading = false;
       })
 
@@ -139,10 +138,10 @@ const authSlice = createSlice({
       .addCase(verifyUser.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(verifyUser.fulfilled, (state, action) => {
+      .addCase(verifyUser.fulfilled, (state) => {
         state.isLoading = false;
       })
-      .addCase(verifyUser.rejected, (state, action) => {
+      .addCase(verifyUser.rejected, (state) => {
         state.isLoading = false;
       })
 
@@ -155,7 +154,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user;
       })
-      .addCase(loginUser.rejected, (state, action) => {
+      .addCase(loginUser.rejected, (state) => {
         state.isLoading = false;
       })
 
@@ -164,16 +163,16 @@ const authSlice = createSlice({
         state.user = null;
         state.isAuthenticated = false;
       })
-      .addCase(logoutUser.rejected, (state, action) => {})
+      .addCase(logoutUser.rejected, (state) => {})
 
       // Forgot Password
       .addCase(forgotPassword.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(forgotPassword.fulfilled, (state, action) => {
+      .addCase(forgotPassword.fulfilled, (state) => {
         state.isLoading = false;
       })
-      .addCase(forgotPassword.rejected, (state, action) => {
+      .addCase(forgotPassword.rejected, (state) => {
         state.isLoading = false;
       })
 
@@ -181,10 +180,10 @@ const authSlice = createSlice({
       .addCase(resetPassword.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(resetPassword.fulfilled, (state, action) => {
+      .addCase(resetPassword.fulfilled, (state) => {
         state.isLoading = false;
       })
-      .addCase(resetPassword.rejected, (state, action) => {
+      .addCase(resetPassword.rejected, (state) => {
         state.isLoading = false;
       });
   },
